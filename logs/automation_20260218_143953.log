@@ -1,0 +1,3 @@
+2026-02-18 14:39:53,737 - __main__ - INFO - Starting LLM Toolkit automation
+2026-02-18 14:40:24,491 - __main__ - ERROR - Automation failed: Question type not found: Essay Style
+2026-02-18 14:40:25,131 - __main__ - ERROR - Automation failed

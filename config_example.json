@@ -1,0 +1,30 @@
+{
+  "credentials": {
+    "email": "pzr@innodata.com",
+    "password": "Password@2027"
+  },
+  "project": {
+    "project_name": "Chem v3",
+    "project_url": "/project/prompt/356",
+    "base_url": "https://llmtoolkit-staging.innodata.com"
+  },
+  "prompt": {
+    "question_text": "hi",
+    "question_type": "Essay Style",
+    "level": "Undergraduate",
+    "discipline": "Organic Chemistry"
+  },
+  "metadata": {
+    "final_answer": "The model responded with a greeting. This is an appropriate response to the input 'hi'.",
+    "solution_process": "Evaluated the response quality and correctness of model outputs.",
+    "thinking_process": "Assessed model response appropriateness for simple greeting input.",
+    "level": "Undergraduate",
+    "discipline": "Organic Chemistry",
+    "key_points": "Model greeting responses are appropriate",
+    "no_unit_required": true
+  },
+  "headless": false,
+  "wait_timeout": 10000,
+  "take_screenshots": true,
+  "screenshot_dir": "./screenshots"
+}

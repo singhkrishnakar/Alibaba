@@ -1,0 +1,3 @@
+2026-02-17 16:01:16,695 - __main__ - INFO - Starting LLM Toolkit automation
+2026-02-17 16:01:32,205 - __main__ - ERROR - Automation failed: Timeout 10000ms exceeded.
+2026-02-17 16:01:32,860 - __main__ - ERROR - Automation failed
