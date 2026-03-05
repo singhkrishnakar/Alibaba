@@ -1,1 +1,0 @@
-{"version":3,"file":"workbench_launcher.d.ts","sourceRoot":"","sources":["../workbench_launcher.ts"],"names":[],"mappings":"AACA,OAAO,EAAE,cAAc,EAAE,MAAM,mBAAmB,CAAC;AAEnD,qBAAa,iBAAiB;IACd,OAAO,CAAC,OAAO;gBAAP,OAAO,EAAE,cAAc;IAErC,MAAM,IAAI,OAAO,CAAC,IAAI,CAAC;CAwEhC"}

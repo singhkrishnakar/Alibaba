@@ -1,1 +1,0 @@
-{"version":3,"file":"authenticator.d.ts","sourceRoot":"","sources":["../authenticator.ts"],"names":[],"mappings":"AACA,OAAO,EAAE,cAAc,EAAE,MAAM,mBAAmB,CAAC;AACnD,OAAO,EAAE,eAAe,EAAE,MAAM,UAAU,CAAC;AAE3C,qBAAa,aAAa;IACV,OAAO,CAAC,OAAO;gBAAP,OAAO,EAAE,cAAc;IAErC,KAAK,CAAC,WAAW,EAAE,eAAe,EAAE,OAAO,EAAE,MAAM,GAAG,OAAO,CAAC,IAAI,CAAC;CAsD5E"}
