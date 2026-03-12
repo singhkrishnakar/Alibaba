@@ -9,69 +9,7 @@ export class WorkbenchPage {
         this.page = page;
     }
 
-    // ==================== CREATE PROMPT SECTION ====================
-
-    // Create/New button locators
-    get createButton(): Locator {
-        return this.page.locator('button:has-text("Create"), button:has-text("New"), button:has-text("Add"), button.css-sit19b');
-    }
-
-    // Prompt Type selector
-    get promptTypeSelector(): Locator {
-        return this.page.locator('button[role="button"], label, input[type="radio"]');
-    }
-
-    getPromptTypeButton(type: string): Locator {
-        return this.page.locator(`button:has-text("${type}"), label:has-text("${type}"), input[value="${type}"], input[type="radio"][value="${type}"]`);
-    }
-
-    // Prompt Text field
-    get promptTextField(): Locator {
-        return this.page.locator('textarea[name="prompt"], textarea, input[name="promptText"], input[placeholder*="prompt"]');
-    }
-
-    // Education Level dropdown
-    get educationLevelSelect(): Locator {
-        return this.page.locator('select');
-    }
-
-    get educationLevelOption(): Locator {
-        return this.page.locator('option');
-    }
-
-    getEducationLevelOption(level: string): Locator {
-        return this.page.locator(`option:has-text("${level}")`);
-    }
-
-    // React-select for education level
-    get reactSelectInput(): Locator {
-        return this.page.locator('#react-select-dropdown-undefined-input, input[id^="react-select-"], .css-1wy0on6 input, .css-1dimb5e-singleValue');
-    }
-
-    get dropdownOption(): Locator {
-        return this.page.locator('div[role="option"], div, li');
-    }
-
-    getDropdownOption(text: string): Locator {
-        return this.page.locator(`div[role="option"]:has-text("${text}"), div:has-text("${text}"), li:has-text("${text}")`);
-    }
-
-    // Subject/Discipline field
-    get subjectField(): Locator {
-        return this.page.locator('input[placeholder*="subject" i], input[placeholder*="topic"], input[name="subject"], input[aria-label*="Subject"]');
-    }
-
-    get dropdownControl(): Locator {
-        return this.page.locator('.dropdownControl, .css-1dimb5e-singleValue, .css-hlgwow');
-    }
-
-    // Submit button for prompt form
-    get submitPromptButton(): Locator {
-        return this.page.locator('button:has-text("Submit"), button:has-text("Create"), button:has-text("Save"), button[aria-haspopup="dialog"]');
-    }
-
     // ==================== RESPONSE SECTION ====================
-
     // Response container - Using standard data-testid selector which is valid CSS
     get responses(): Locator {
         return this.page.locator('[data-testid="response"]');
@@ -126,57 +64,6 @@ export class WorkbenchPage {
 
     get questionText(): Locator {
         return this.page.locator('[data-testid="question"] p, [data-testid="prompt"] p, [data-testid="question"], [data-testid="prompt"]');
-    }
-
-    // ==================== METADATA FORM SECTION ====================
-
-    // Final answer field
-    get finalAnswerField(): Locator {
-        return this.page.locator('textarea[placeholder*="answer" i], input[placeholder*="answer" i], textarea[aria-label*="answer" i]');
-    }
-
-    // Solution process field
-    get solutionProcessField(): Locator {
-        return this.page.locator('textarea[placeholder*="solution" i], textarea[placeholder*="process" i], input[placeholder*="solution" i]');
-    }
-
-    // Thinking process field
-    get thinkingProcessField(): Locator {
-        return this.page.locator('textarea[placeholder*="thinking" i], input[placeholder*="thinking" i], textarea[aria-label*="thinking" i]');
-    }
-
-    // No Unit Required checkbox
-    get noUnitRequiredCheckbox(): Locator {
-        return this.page.locator('input[type="checkbox"][aria-label*="unit" i], input[type="checkbox"]:near(label:has-text("Unit"))');
-    }
-
-    // Key points field
-    get keyPointsField(): Locator {
-        return this.page.locator('textarea[placeholder*="key" i], input[placeholder*="key" i], [contenteditable="true"]');
-    }
-
-    // ==================== FORM SUBMISSION ====================
-
-    // Main submit button
-    get submitFormButton(): Locator {
-        return this.page.locator('button:has-text("Submit"), button:has-text("Save"), button[type="submit"]');
-    }
-
-    // Cancel button
-    get cancelButton(): Locator {
-        return this.page.locator('button:has-text("Cancel"), button:has-text("Close"), button[aria-label="Close"]');
-    }
-
-    // ==================== NAVIGATION ====================
-
-    // Back button
-    get backButton(): Locator {
-        return this.page.locator('button:has(svg[data-testid="ArrowBackIcon"]), button[aria-label*="back" i]');
-    }
-
-    // Menu button
-    get menuButton(): Locator {
-        return this.page.locator('button:has(svg[data-testid="MoreVertIcon"]), button[aria-haspopup="menu"]');
     }
 
     // ==================== HELPER METHODS ====================
@@ -324,17 +211,6 @@ export class WorkbenchPage {
     async getQuestionText(): Promise<string> {
         const text = await this.questionText.textContent();
         return text?.trim() || '';
-    }
-
-    /**
-     * Check if form is complete (all fields filled)
-     */
-    async isFormComplete(): Promise<boolean> {
-        const finalAnswer = await this.finalAnswerField.inputValue();
-        const solutionProcess = await this.solutionProcessField.inputValue();
-        const thinkingProcess = await this.thinkingProcessField.inputValue();
-
-        return !!(finalAnswer?.trim() && solutionProcess?.trim() && thinkingProcess?.trim());
     }
 
     /**

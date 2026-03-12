@@ -70,8 +70,8 @@ export class AutomationOrchestrator {
             // Step 6.1: Confirm navigation to workbench page
             await this.workbenchOrchestrator!.verifyUserNavigatedToWorkbench(this.config.project.baseUrl, this.config.prompt);
 
-            // Step 6.5: Wait for all responses to appear on workbench (wait up to 10 minutes)
-            const allResponsesReady = await this.workbenchOrchestrator!.waitForAllResponses(10, 600000);
+            // Step 6.5: Wait for all 5 responses to appear on workbench (wait up to 10 minutes)
+            const allResponsesReady = await this.workbenchOrchestrator!.waitForAllResponses(5, 600000);
             if (!allResponsesReady) {
                 console.log('⚠ Not all responses generated, but continuing with available responses...');
             }
