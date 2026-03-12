@@ -2,12 +2,21 @@
 import { BrowserManager } from './browser_manager';
 import { WorkbenchPage } from './workbench_page';
 import { PromptTestData, promptData } from "./data/promptData";
+import { Page } from 'playwright';
 
 export class WorkbenchOrchestrator {
-    private workbenchPage: WorkbenchPage;
+    private workbenchPage: WorkbenchPage | null = null;
 
-    constructor(private browser: BrowserManager) {
-        this.workbenchPage = new WorkbenchPage(this.browser.getPage());
+    constructor(private browser: BrowserManager) { }
+
+    async initWorkbenchPage() {
+        const page = this.browser.getPage(); // throws if browser not launched
+        this.workbenchPage = new WorkbenchPage(page);
+    }
+
+    get workbench(): WorkbenchPage {
+        if (!this.workbenchPage) throw new Error('WorkbenchPage not initialized. Call initWorkbenchPage() first.');
+        return this.workbenchPage;
     }
 
     /*Confirm navigation to workbench page by checking for a common workbench element (e.g., response container)*/
@@ -106,7 +115,7 @@ export class WorkbenchOrchestrator {
             });
 
             // Count responses
-            const currentCount = await this.workbenchPage.getResponseCount().catch(e => {
+            const currentCount = await this.workbenchPage!.getResponseCount().catch(e => {
                 console.warn('getResponseCount failed (ignored):', e);
                 return 0;
             });
@@ -134,7 +143,7 @@ export class WorkbenchOrchestrator {
     async getAllResponses(): Promise<string[]> {
         try {
             console.log('📖 Retrieving all response texts...');
-            const responses = await this.workbenchPage.getAllResponseTexts();
+            const responses = await this.workbenchPage!.getAllResponseTexts();
             console.log(`✓ Retrieved ${responses.length} responses:`);
             responses.forEach((text, index) => {
                 console.log(`  [${index + 1}] ${text.substring(0, 80)}...`);
@@ -151,7 +160,7 @@ export class WorkbenchOrchestrator {
      */
     async getResponse(index: number): Promise<string> {
         try {
-            return await this.workbenchPage.getResponseText(index);
+            return await this.workbenchPage!.getResponseText(index);
         } catch (error) {
             console.error(`✗ Error getting response ${index}: ${error}`);
             return '';
@@ -163,7 +172,7 @@ export class WorkbenchOrchestrator {
      */
     async getQuestionText(): Promise<string> {
         try {
-            const question = await this.workbenchPage.getQuestionText();
+            const question = await this.workbenchPage!.getQuestionText();
             console.log(`📋 Question: ${question.substring(0, 100)}...`);
             return question;
         } catch (error) {
@@ -179,7 +188,7 @@ export class WorkbenchOrchestrator {
      */
     async getResponseCount(): Promise<number> {
         try {
-            return await this.workbenchPage.getResponseCount();
+            return await this.workbenchPage!.getResponseCount();
         } catch (error) {
             console.error(`✗ Could not get response count from orchestrator: ${error}`);
             return 0;
@@ -192,10 +201,10 @@ export class WorkbenchOrchestrator {
     async waitAndDebugResponses(expectedCount: number = 5): Promise<void> {
         const ready = await this.waitForAllResponses(expectedCount);
         if (ready) {
-            await this.workbenchPage.debugLogResponses();
+            await this.workbenchPage!.debugLogResponses();
         } else {
             console.log('⚠ Not all responses loaded, logging what we have:');
-            await this.workbenchPage.debugLogResponses();
+            await this.workbenchPage!.debugLogResponses();
         }
     }
 
@@ -204,7 +213,7 @@ export class WorkbenchOrchestrator {
      */
     async areAllResponsesMarked(): Promise<boolean> {
         try {
-            return await this.workbenchPage.allResponsesMarked();
+            return await this.workbenchPage!.allResponsesMarked();
         } catch (error) {
             console.error(`✗ Error checking response marks: ${error}`);
             return false;
@@ -316,7 +325,7 @@ export class WorkbenchOrchestrator {
         console.log(`🚀 Waiting for Frontier responses (expected: ${expectedFrontierResponses})`);
 
         // Step 1: Get existing response count
-        const beforeCount = await this.workbenchPage.getResponseCount();
+        const beforeCount = await this.workbenchPage!.getResponseCount();
         console.log(`📊 Existing responses before generation: ${beforeCount}`);
 
         // Step 2: Wait for loader to disappear
@@ -372,7 +381,7 @@ export class WorkbenchOrchestrator {
     async getAllFrontierResponses(): Promise<string[]> {
         try {
             console.log('📖 Retrieving all frontier model responses...');
-            const responses = await this.workbenchPage.getAllResponseTexts();
+            const responses = await this.workbenchPage!.getAllResponseTexts();
             const response = this.getAllResponses(); // reuse existing method which already logs responses
             console.log(`✓ Retrieved ${responses.length} frontier responses:`);
             responses.forEach((text, index) => {

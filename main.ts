@@ -32,6 +32,7 @@ export class AutomationOrchestrator {
         this.promptCreator = new PromptCreator(this.browser);
         this.responseEvaluator = new ResponseEvaluator(this.browser);
         this.formHandler = new FormHandler(this.browser);
+
     }
 
     async run(testData: PromptTestData): Promise<void> {
@@ -42,138 +43,39 @@ export class AutomationOrchestrator {
 
 
             // Launch browser with saved session
-            await this.browser.launch(this.config.headless, true);
-
-            const page = this.browser.getPage();
-
-            await page.goto(`${this.config.project.baseUrl}/dashboard`);
-
-            console.log("Cookies:", await page.context().cookies());
-            //console.log("LocalStorage:", await page.evaluate(() => localStorage));
-            //console.log("SessionStorage:", await page.evaluate(() => sessionStorage));
-
-            this.workbenchOrchestrator = new WorkbenchOrchestrator(this.browser);
+            await this.launchBrowser();
 
             // Validate session
-            const sessionValid = await this.projectSelector.validateSession(
-                this.config.project.baseUrl
-            );
+            await this.validateSession();
 
-            if (!sessionValid) {
-                throw new Error('Session expired. Run auth.setup.ts again');
-            }
-
-
-            // STEP 1: Navigate to dashboard first
-            console.log('📊 Opening dashboard...');
-
-            await page.goto(`${this.config.project.baseUrl}/dashboard`);
-
-            await this.browser.waitForLoader();
-
-            await page.waitForLoadState('networkidle');
-
-            // Wait for loader
-            await this.workbenchLauncher.waitForLoader();
-
-            console.log('✓ Dashboard ready');
+            // Step 1: Open dashboard to ensure we're logged in and session is valid
+            await this.openDashboard();
 
             // STEP 2: Navigate to project
-            await this.projectSelector.navigateToProject(
-                this.config.project.projectName,
-                this.config.project.baseUrl,
-                this.config.project.projectUrl
-            );
 
-            // Wait again for loader
-            await this.workbenchLauncher.waitForLoader();
+            await this.navigateToProject();
 
             // STEP 3: Launch workbench
-            await this.workbenchLauncher.launch();
 
-            // Step 5: Create prompt (abort if failure)
-            const created = await this.promptCreator.createPrompt(testData.prompt, true);
-            if (!created) {
-                throw new Error('Prompt creation failed, aborting automation');
-            }
+            await this.launchWorkbench();
 
-            // Step 6.1: Confirm navigation to workbench page
-            await this.workbenchOrchestrator!.verifyUserNavigatedToWorkbench(this.config.project.baseUrl, testData);
+            //Step 5: Create prompt (abort if failure)
 
-            // Step 6.5: Wait for all 5 responses to appear on workbench (wait up to 10 minutes)
-            const allResponsesReady = await this.workbenchOrchestrator!.waitForAllResponses(
-                testData.expectedBaseResponsesCount,
-                600000
-            );
-            if (!allResponsesReady) {
-                console.log('⚠ Not all responses generated, but continuing with available responses...');
-            }
+            await this.createPrompt(testData);
 
-            // Step 6.6: Retrieve and display response data
-            await this.workbenchOrchestrator!.getAllResponses();
-
-            // Step 7: Evaluate main-model responses
-            await this.responseEvaluator.mark2Incorrect3Correct();
             await this.browser.takeScreenshot('07_responses_marked_specific');
 
-            // record how many responses exist before invoking Frontier
-            const beforeFrontierCount = await this.workbenchOrchestrator!.getResponseCount();
-
             // Step 7.5: Wait for frontier button to be enabled
-            const frontierEnabled = await this.workbenchOrchestrator!.waitForFrontierButtonEnabled(15000);
+            await this.handleResponses(testData);
 
-            if (frontierEnabled) {
-                // Step 7.6: Test on frontier models
-                // allow up to 5 minutes for frontier generation
-                const frontierReady = await this.workbenchOrchestrator!.testOnFrontierModels(testData.frontierResponsesCount, 30000)
-                if (frontierReady) {
-                    // Step 7.7: Retrieve frontier model responses
-                    await this.workbenchOrchestrator!.getAllFrontierResponses();
-                    await this.browser.takeScreenshot('08_frontier_evaluation_ready');
-
-                    // count new responses added by Frontier
-                    const afterFrontierCount = await this.workbenchOrchestrator!.getResponseCount();
-                    const newResponses = afterFrontierCount - beforeFrontierCount;
-                    if (newResponses > 0) {
-                        console.log(`🔁 Marking ${newResponses} new frontier response(s) (indices ${beforeFrontierCount}‑${afterFrontierCount - 1})`);
-                        // use offset so we don't re‑touch earlier responses
-                        await this.responseEvaluator.mark2Incorrect3Correct(beforeFrontierCount);
-                        await this.browser.takeScreenshot('09_frontier_responses_marked');
-                    } else {
-                        console.log('⚠ No additional responses appeared after frontier run');
-                    }
-                } else {
-                    console.log('⚠ Frontier models did not generate expected responses, continuing with available data...');
-                }
-            } else {
-                console.log('⚠ Frontier button not enabled (may need more incorrect responses), skipping frontier testing...');
-            }
 
             // Step 8: Click Submit to open "Review and Submit models" form
-            const opened = await this.formHandler.clickSubmitToOpenReviewForm();
-            if (!opened) {
-                console.log('  ⚠ Could not open Review form, trying fill anyway...');
-            }
-            await this.browser.waitForTimeout(2000);
-            await this.browser.takeScreenshot('09_review_form_opened');
 
-            // Wait for Review and Submit form to be visible (Final Answer field)
-            try {
-                const page = this.browser.getPage();
-                await page.waitForSelector('text=Final Answer', { timeout: 8000 }).catch(() => { });
-            } catch { /* ignore */ }
+            // // Step 9: Fill metadata (Final Answer, Solution Process, Thinking Process, Answer Unit)
 
-            // Step 9: Fill metadata (Final Answer, Solution Process, Thinking Process, Answer Unit)
 
-            await this.formHandler.fillMetadata(testData.metadata);
-            await this.browser.takeScreenshot('10_metadata_filled');
+            await this.reviewAndSubmit(testData);
 
-            // Step 11: Submit Review form
-            await this.formHandler.submitForm();
-            await this.browser.takeScreenshot('12_form_submitted');
-
-            await this.formHandler.waitForSubmissionConfirmation();
-            await this.formHandler.waitForRedirectToCreationPage();
 
             const totalDuration = ((Date.now() - totalStart) / 1000).toFixed(1);
             console.log(`\n✅ Automation completed successfully in ${totalDuration}s\n`);
@@ -191,7 +93,163 @@ export class AutomationOrchestrator {
             // on success: browser left open for inspection; on failure: closed in catch
         }
     }
+
+
+    private async launchBrowser() {
+        // Step 1: Launch browser
+        await this.browser.launch(this.config.headless, true);
+        console.log('✓ Browser launched with saved session');
+
+        // Step 2: Initialize WorkbenchOrchestrator after browser has a page
+        this.workbenchOrchestrator = new WorkbenchOrchestrator(this.browser);
+
+        // Step 3: Initialize WorkbenchPage inside orchestrator
+        await this.workbenchOrchestrator.initWorkbenchPage();
+    }
+
+    private async validateSession() {
+        const sessionValid = await this.projectSelector.validateSession(this.config.project.baseUrl);
+        if (!sessionValid) throw new Error('Session expired. Run auth.setup.ts again');
+    }
+
+    private async navigateToProject() {
+        await this.openDashboard();
+        await this.projectSelector.navigateToProject(
+            this.config.project.projectName,
+            this.config.project.baseUrl,
+            this.config.project.projectUrl
+        );
+        await this.workbenchLauncher.waitForLoader();
+    }
+
+    private async launchWorkbench() {
+        await this.workbenchLauncher.launch();
+    }
+
+    private async createPrompt(testData: PromptTestData) {
+        const created = await this.promptCreator.createPrompt(testData.prompt, true);
+        if (!created) throw new Error('Prompt creation failed, aborting automation');
+    }
+
+
+
+
+    private async handleResponses(testData: PromptTestData) {
+        await this.workbenchOrchestrator!.verifyUserNavigatedToWorkbench(this.config.project.baseUrl, testData);
+
+        const allResponsesReady = await this.workbenchOrchestrator!.waitForAllResponses(
+            testData.expectedBaseResponsesCount, 600000
+        );
+
+        if (!allResponsesReady) console.warn('⚠ Not all responses generated');
+
+        await this.workbenchOrchestrator!.getAllResponses();
+        await this.responseEvaluator.mark2Incorrect3Correct();
+
+        const beforeFrontierCount = await this.workbenchOrchestrator!.getResponseCount();
+        const frontierEnabled = await this.workbenchOrchestrator!.waitForFrontierButtonEnabled(15000);
+
+        if (frontierEnabled) {
+            const frontierReady = await this.workbenchOrchestrator!.testOnFrontierModels(
+                testData.frontierResponsesCount, 30000
+            );
+            if (frontierReady) {
+                await this.workbenchOrchestrator!.getAllFrontierResponses();
+                const afterFrontierCount = await this.workbenchOrchestrator!.getResponseCount();
+                const newResponses = afterFrontierCount - beforeFrontierCount;
+                if (newResponses > 0) await this.responseEvaluator.mark2Incorrect3Correct(beforeFrontierCount);
+            }
+        }
+    }
+
+
+
+    private async handleError(error: any, startTime: number) {
+        const totalDuration = ((Date.now() - startTime) / 1000).toFixed(1);
+        console.error(`\n❌ Automation failed after ${totalDuration}s\n`, error);
+        try { await this.browser.close(); } catch { console.warn('⚠ Failed to close browser'); }
+    }
+
+
+
+
+    private async openDashboard() {
+
+        const page = this.browser.getPage();
+
+        console.log('📊 Opening dashboard...');
+
+        await page.goto(`${this.config.project.baseUrl}/dashboard`);
+
+        await this.browser.waitForLoader();
+
+        await page.waitForLoadState('networkidle');
+
+        console.log('✓ Dashboard ready');
+    }
+
+    private async executePromptFlow(testData: PromptTestData) {
+
+        const created = await this.promptCreator.createPrompt(testData.prompt, true);
+
+        if (!created) {
+            throw new Error('Prompt creation failed');
+        }
+
+        await this.workbenchOrchestrator!.verifyUserNavigatedToWorkbench(
+            this.config.project.baseUrl,
+            testData
+        );
+
+        await this.workbenchOrchestrator!.waitForAllResponses(
+            testData.expectedBaseResponsesCount,
+            600000
+        );
+
+        await this.workbenchOrchestrator!.getAllResponses();
+
+        await this.responseEvaluator.mark2Incorrect3Correct();
+    }
+
+
+    private async reviewAndSubmit(testData: PromptTestData) {
+        console.log('📝 Submitting Review and Metadata...');
+
+        // Step 8: Click Submit to open "Review and Submit models" form
+        const opened = await this.formHandler.clickSubmitToOpenReviewForm();
+        if (!opened) {
+            console.warn('⚠ Could not open Review form, trying to fill anyway...');
+        }
+
+        // Give UI time to render
+        await this.browser.waitForTimeout(2000);
+        await this.browser.takeScreenshot('09_review_form_opened');
+
+        // Wait for "Final Answer" field to appear
+        try {
+            const page = this.browser.getPage();
+            await page.waitForSelector('text=Final Answer', { timeout: 8000 }).catch(() => { });
+        } catch {
+            console.warn('⚠ Final Answer field not visible, proceeding anyway');
+        }
+
+        // Step 9: Fill metadata
+        await this.formHandler.fillMetadata(testData.metadata);
+        await this.browser.takeScreenshot('10_metadata_filled');
+
+        // Step 11: Submit the form
+        await this.formHandler.submitForm();
+        await this.browser.takeScreenshot('12_form_submitted');
+
+        // Wait for confirmation & redirect
+        await this.formHandler.waitForSubmissionConfirmation();
+        await this.formHandler.waitForRedirectToCreationPage();
+
+        console.log('✅ Review and Submit completed');
+    }
 }
+
+
 
 // Run if executed directly
 if (require.main === module) {

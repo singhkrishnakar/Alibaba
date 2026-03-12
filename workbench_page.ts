@@ -4,9 +4,8 @@ import * as fs from 'fs';
 
 export class WorkbenchPage {
     private page: Page;
-
-    constructor(page: Page) {
-        this.page = page;
+    constructor(page: Page) { 
+        this.page = page; // explicitly assign
     }
 
     // ==================== RESPONSE SECTION ====================
@@ -172,7 +171,7 @@ export class WorkbenchPage {
         return text?.trim() || '';
     }
 
-   
+
 
     /**
      * Check if all responses are marked
@@ -241,6 +240,6 @@ export class WorkbenchPage {
         }
     }
 
-    
-   
+
+
 }
