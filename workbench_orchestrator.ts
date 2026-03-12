@@ -25,13 +25,17 @@ export class WorkbenchOrchestrator {
                 { timeout: 20000 } // 20s to allow page load
             );
 
-            // Wait for the user prompt to appear (confirming workbench is ready)
-            console.log('✓ Navigated to workbench URL, waiting for prompt to be visible...'+ config.prompt.promptText);
-            const workbenchPrompt = page.locator('> p', {
-                hasText: config.prompt.promptText
-            });
-            await workbenchPrompt.first().waitFor({ state: 'visible', timeout: 10000 });
+            console.log('⏳ Waiting for Workbench to be ready...');
 
+            await Promise.all([
+                page.getByText('Workbench').first().waitFor({ timeout: 20000 }),
+                page.locator('#elapseTime').waitFor({ timeout: 20000 }),
+                page.locator(`text=/\\d+ response\\(s\\) out of ${config.expectedBaseResponsesCount}/`)
+                    .first()
+                    .waitFor({ timeout: 20000 })
+            ]);
+
+            console.log('✓ Workbench page ready');
             console.log(`✓ Workbench loaded and prompt "${config.prompt.promptText}" is visible`);
         } catch (error) {
             console.error('⚠ Workbench page not reached after prompt creation', error);
