@@ -1,3 +1,0 @@
-2026-02-18 14:30:48,580 - __main__ - INFO - Starting LLM Toolkit automation
-2026-02-18 14:31:50,336 - __main__ - ERROR - Automation failed: Project 'Chem v3' not found. Available projects: []
-2026-02-18 14:31:50,996 - __main__ - ERROR - Automation failed
