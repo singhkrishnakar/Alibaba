@@ -10,7 +10,7 @@ export class WorkbenchPage {
     }
 
     // ==================== CREATE PROMPT SECTION ====================
-    
+
     // Create/New button locators
     get createButton(): Locator {
         return this.page.locator('button:has-text("Create"), button:has-text("New"), button:has-text("Add"), button.css-sit19b');
@@ -186,12 +186,13 @@ export class WorkbenchPage {
      * First checks summary display "X response(s) out of Y", then counts DOM elements
      */
     async getResponseCount(): Promise<number> {
-        // First try to read from summary text: "5 response(s) out of 5"
+
+        // Try to read from summary text: "5 response(s) out of 5"
         try {
-            const summaryText = await this.page.evaluate(() => {
-                // Look for div containing "response(s) out of"
+            const summaryCount = await this.page.evaluate(() => {
                 const divs = Array.from(document.querySelectorAll('div'));
                 const summary = divs.find(d => d.textContent?.includes('response(s) out of'));
+
                 if (summary) {
                     const match = summary.textContent?.match(/(\d+)\s*response/);
                     if (match && match[1]) {
@@ -200,58 +201,25 @@ export class WorkbenchPage {
                 }
                 return null;
             });
-            
-            if (summaryText !== null && summaryText > 0) {
-                console.log(`    📊 Summary shows: ${summaryText} response(s) generated`);                return summaryText;
+
+            if (summaryCount !== null) {
+                console.log(`    📊 Summary shows: ${summaryCount} response(s) generated`);
+                return summaryCount;
             }
+
         } catch (e) {
-            // Fall through to alternative methods
+            console.warn('    ⚠ Failed to read summary text');
         }
 
-        // Try primary selector
-        let count = await this.responses.count();
-        console.log(`    🔍 Checking [data-testid="response"]: found ${count}`);
-        
-        if (count > 0) {
-            return count;
+        // Fallback only if summary completely missing
+        const radioCount = await this.page.locator('input[type="radio"]').count();
+
+        if (radioCount > 0) {
+            const responses = Math.floor(radioCount / 2);
+            console.log(`    ✓ Estimated ${responses} responses from radio buttons`);
+            return responses;
         }
 
-        // Try alternative selectors
-        const selectors = [
-            '[data-testid="response"]',
-            '.response',
-            '[class*="response"]',
-            'div[aria-label*="response" i]',
-            'div[role="article"]',
-            '[class*="ResponseContainer"]',
-            'div:has(> div > label:has-text("Correct"))'
-        ];
-
-        for (const selector of selectors) {
-            count = await this.page.locator(selector).count();
-            if (count > 0) {
-                console.log(`    ✓ Found ${count} responses using selector: ${selector}`);
-                return count;
-            }
-            console.log(`    ✗ Selector [${selector}]: 0 found`);
-        }
-
-        // Log page content for debugging
-        console.log('    ⚠ No responses found with any selector. Dumping page structure...');
-        const bodyText = await this.page.evaluate(() => {
-            const body = document.body;
-            return {
-                childCount: body.children.length,
-                textLength: body.textContent?.length || 0,
-                hasRadios: !!document.querySelector('input[type="radio"]'),
-                radioCount: document.querySelectorAll('input[type="radio"]').length,
-                hasLabels: !!document.querySelector('label'),
-                labelCount: document.querySelectorAll('label').length,
-                allDivText: Array.from(document.querySelectorAll('div')).slice(0, 5).map(d => d.className).join(' | ')
-            };
-        });
-        console.log('    📋 Page structure:', bodyText);
-        
         return 0;
     }
 
@@ -317,12 +285,7 @@ export class WorkbenchPage {
         return text?.trim() || '';
     }
 
-    /**
-     * Check if response exists
-     */
-    async hasResponse(index: number): Promise<boolean> {
-        return (await this.getResponseByIndex(index).count()) > 0;
-    }
+   
 
     /**
      * Check if all responses are marked
@@ -370,7 +333,7 @@ export class WorkbenchPage {
         const finalAnswer = await this.finalAnswerField.inputValue();
         const solutionProcess = await this.solutionProcessField.inputValue();
         const thinkingProcess = await this.thinkingProcessField.inputValue();
-        
+
         return !!(finalAnswer?.trim() && solutionProcess?.trim() && thinkingProcess?.trim());
     }
 
@@ -391,13 +354,6 @@ export class WorkbenchPage {
     }
 
     /**
-     * Get all element text content
-     */
-    async getPageText(): Promise<string> {
-        return await this.page.textContent('body') || '';
-    }
-
-    /**
      * Log all visible responses for debugging
      */
     async debugLogResponses(): Promise<void> {
@@ -409,22 +365,6 @@ export class WorkbenchPage {
         }
     }
 
-    /**
-     * Check if element exists
-     */
-    async elementExists(locator: Locator): Promise<boolean> {
-        return (await locator.count()) > 0;
-    }
-
-    /**
-     * Wait for element visibility
-     */
-    async waitForElement(locator: Locator, timeout: number = 5000): Promise<boolean> {
-        try {
-            await locator.first().waitFor({ state: 'visible', timeout });
-            return true;
-        } catch {
-            return false;
-        }
-    }
+    
+   
 }

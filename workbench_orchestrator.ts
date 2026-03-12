@@ -1,12 +1,47 @@
 // Workbench Orchestrator - Handles response waiting and workbench operations
 import { BrowserManager } from './browser_manager';
 import { WorkbenchPage } from './workbench_page';
+import { PromptConfig } from './config';
 
 export class WorkbenchOrchestrator {
     private workbenchPage: WorkbenchPage;
 
     constructor(private browser: BrowserManager) {
         this.workbenchPage = new WorkbenchPage(this.browser.getPage());
+    }
+
+    /*Confirm navigation to workbench page by checking for a common workbench element (e.g., response container)*/
+    async verifyUserNavigatedToWorkbench(baseUrl: string, config: PromptConfig): Promise<void> {
+        console.log('🚀 Verifying navigation to workbench...');
+
+        // Get current page from browser
+        let page = this.browser.getPage();
+        if (!page) throw new Error('No active page available');
+
+        try {
+            // Wait for URL pattern to match workbench (use a regex to handle dynamic IDs)
+            await page.waitForURL(
+                /\/project\/prompt\/\d+\/promptCreationWorkbench\/workbench/,
+                { timeout: 20000 } // 20s to allow page load
+            );
+
+            // Wait for the user prompt to appear (confirming workbench is ready)
+            const workbenchPrompt = page.locator('div.sc-6e40ec64-9.ivqzyH > div > p', {
+                hasText: config.promptText
+            });
+            await workbenchPrompt.first().waitFor({ state: 'visible', timeout: 10000 });
+
+            console.log(`✓ Workbench loaded and prompt "${config.promptText}" is visible`);
+        } catch (error) {
+            console.error('⚠ Workbench page not reached after prompt creation', error);
+
+            // Check if page is closed, then throw meaningful error
+            if (page.isClosed()) {
+                throw new Error('Browser page was closed before Workbench could load');
+            }
+
+            throw error;
+        }
     }
 
     /**
@@ -50,97 +85,42 @@ export class WorkbenchOrchestrator {
     }
 
     async waitForAllResponses(expectedCount: number = 5, maxWaitTime: number = 600000): Promise<boolean> {
-        console.log(`\n⏳ Waiting (up to ${maxWaitTime/1000}s) for all ${expectedCount} responses on workbench...`);
+        console.log(`⏳ Waiting (up to ${maxWaitTime / 1000}s) for ${expectedCount} responses...`);
         const startTime = Date.now();
-        
-        // help by waiting for any visible loader to go away before polling
-        await this.waitForLoaderToDisappear(maxWaitTime / 2);
+        const pollInterval = 3000; // 3s polling to balance responsiveness with load
 
-        try {
+        let lastLoggedCount = 0;
+
+        while (Date.now() - startTime < maxWaitTime) {
             const page = this.browser.getPage();
-            let lastLoggedCount = 0;
-            const pollInterval = 10000; // Check every 10 seconds
-            const startPoll = Date.now();
+            if (!page || page.isClosed()) throw new Error('Page closed while waiting for responses');
 
-            // helper to read both generated and total from summary
-            const readSummary = async (): Promise<{generated: number, total: number}> => {
-                const page = this.browser.getPage();
-                return page.evaluate(() => {
-                    const divs = Array.from(document.querySelectorAll('div'));
-                    const summary = divs.find(d => d.textContent?.includes('response(s) out of'));
-                    if (summary) {
-                        const m = summary.textContent?.match(/(\d+)\s*response\(s\) out of\s*(\d+)/i);
-                        if (m && m[1] && m[2]) return { generated: parseInt(m[1],10), total: parseInt(m[2],10) };
-                    }
-                    return { generated: 0, total: 0 };
-                });
-            };
-            
-            // Check immediately once loader is gone
-            let currentCount = await this.workbenchPage.getResponseCount();
-            const summary = await readSummary();
-            if (summary.total > expectedCount) {
-                console.log(`  ℹ Summary total increased to ${summary.total}, adjusting target`);
-                expectedCount = summary.total;
+            // Wait for loader to disappear safely
+            await this.waitForLoaderToDisappear(pollInterval / 2).catch(e => {
+                console.warn('Loader check failed (ignored):', e);
+            });
+
+            // Count responses
+            const currentCount = await this.workbenchPage.getResponseCount().catch(e => {
+                console.warn('getResponseCount failed (ignored):', e);
+                return 0;
+            });
+
+            if (currentCount > lastLoggedCount) {
+                console.log(`  ✓ Response ${currentCount} of ${expectedCount} ready`);
+                lastLoggedCount = currentCount;
             }
-            console.log(`  … current responses: ${currentCount}/${expectedCount}`);
+
             if (currentCount >= expectedCount) {
-                const duration = Date.now() - startTime;
-                console.log(`✓ All ${expectedCount} responses ready (${duration}ms)\n`);
-                await this.browser.takeScreenshot('06_all_responses_loaded');
+                console.log(`✓ All ${expectedCount} responses ready`);
                 return true;
             }
 
-            while (Date.now() - startPoll < maxWaitTime) {
-                // also keep an eye on loader while waiting for responses
-                const loaderStill = await page.evaluate(() => {
-                    const body = document.querySelector('body');
-                    if (!body) return false;
-                    const text = (body.textContent || '').toLowerCase();
-                    if (/generating response|generating responses|generating|loading/.test(text)) return true;
-                    const spinner = document.querySelector('.spinner, .loader, [data-loading], [aria-busy="true"]') as HTMLElement | null;
-                    if (spinner && (spinner as any).offsetParent !== null) return true;
-                    return false;
-                });
-                if (loaderStill) {
-                    console.log(`  … loader still present during response poll, waiting ${pollInterval/1000}s`);
-                }
-
-                currentCount = await this.workbenchPage.getResponseCount();
-                const s = await readSummary();
-                if (s.total > expectedCount) {
-                    console.log(`  ℹ Summary total increased to ${s.total}, adjusting target`);
-                    expectedCount = s.total;
-                }
-
-                console.log(`  … current responses: ${currentCount}/${expectedCount}`);
-
-                // Log when response count increases
-                if (currentCount > lastLoggedCount) {
-                    console.log(`  ✓ Response ${currentCount} of ${expectedCount} generated`);
-                    lastLoggedCount = currentCount;
-                }
-
-                if (currentCount >= expectedCount) {
-                    const duration = Date.now() - startTime;
-                    console.log(`✓ All ${expectedCount} responses ready (${duration}ms)\n`);
-                    await this.browser.takeScreenshot('06_all_responses_loaded');
-                    return true;
-                }
-
-                await this.browser.waitForTimeout(pollInterval);
-            }
-            
-            // Timeout reached
-            const finalCount = await this.workbenchPage.getResponseCount();
-            const duration = Date.now() - startTime;
-            console.log(`⚠ Timeout waiting for responses. Got ${finalCount}/${expectedCount} after ${duration}ms\n`);
-            
-            return finalCount >= expectedCount;
-        } catch (error) {
-            console.error(`✗ Error waiting for responses: ${error}`);
-            return false;
+            await this.browser.waitForTimeout(pollInterval);
         }
+
+        console.warn(`⚠ Timeout reached; got ${lastLoggedCount}/${expectedCount} responses`);
+        return lastLoggedCount >= expectedCount;
     }
 
     /**
@@ -265,7 +245,7 @@ export class WorkbenchOrchestrator {
             const beforeCount = await this.workbenchPage.getResponseCount();
 
             const page = this.browser.getPage();
-            
+
             // Try multiple selectors to find and click the frontier button
             const selectors = [
                 'button:has-text("Test on Frontier Models")',
@@ -273,7 +253,7 @@ export class WorkbenchOrchestrator {
                 'button:contains("Frontier")',
                 'button[aria-label*="Frontier" i]'
             ];
-            
+
             let buttonClicked = false;
             for (const selector of selectors) {
                 try {
@@ -294,7 +274,7 @@ export class WorkbenchOrchestrator {
                     // Continue to next selector
                 }
             }
-            
+
             if (!buttonClicked) {
                 console.log('  ⚠ Could not find or click "Test on Frontier Models" button');
                 return false;
@@ -342,6 +322,7 @@ export class WorkbenchOrchestrator {
         try {
             console.log('📖 Retrieving all frontier model responses...');
             const responses = await this.workbenchPage.getAllResponseTexts();
+            const response = this.getAllResponses(); // reuse existing method which already logs responses
             console.log(`✓ Retrieved ${responses.length} frontier responses:`);
             responses.forEach((text, index) => {
                 console.log(`  [Frontier ${index + 1}] ${text.substring(0, 80)}...`);
@@ -359,7 +340,7 @@ export class WorkbenchOrchestrator {
     async isFrontierButtonEnabled(): Promise<boolean> {
         try {
             const page = this.browser.getPage();
-            
+
             // Try multiple selectors with timeout
             const selectors = [
                 'button:has-text("Test on Frontier Models")',
@@ -368,7 +349,7 @@ export class WorkbenchOrchestrator {
                 'button[aria-label*="Frontier" i]',
                 'button[aria-label*="frontier" i]'
             ];
-            
+
             for (const selector of selectors) {
                 try {
                     const button = page.locator(selector);
@@ -381,7 +362,7 @@ export class WorkbenchOrchestrator {
                     // Continue to next selector
                 }
             }
-            
+
             return false;
         } catch (error) {
             console.error(`✗ Error checking frontier button status: ${error}`);
