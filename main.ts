@@ -88,7 +88,7 @@ export class AutomationOrchestrator {
 
             // Step 7.5: Wait for frontier button to be enabled
             const frontierEnabled = await this.workbenchOrchestrator!.waitForFrontierButtonEnabled(15000);
-            
+
             if (frontierEnabled) {
                 // Step 7.6: Test on frontier models
                 // allow up to 5 minutes for frontier generation
@@ -142,35 +142,13 @@ export class AutomationOrchestrator {
             await this.formHandler.fillMetadata(metadata);
             await this.browser.takeScreenshot('10_metadata_filled');
 
-            // Step 10: Add custom Knowledge Point (Enter key point -> ADD -> enter text -> Save)
-            if (metadata.customKnowledgePoint) {
-                await this.formHandler.addKnowledgePoint(metadata.customKnowledgePoint);
-                await this.browser.takeScreenshot('11_knowledge_point_added');
-                await this.browser.waitForTimeout(1000);
-            }
-
             // Step 11: Submit Review form
             await this.formHandler.submitForm();
             await this.browser.takeScreenshot('12_form_submitted');
 
-            // wait for confirmation notice and eventual redirect back to prompt creation
-            const page = this.browser.getPage();
-            console.log('🔁 Waiting for submission confirmation message...');
-            try {
-                await page.waitForSelector('text=Prompt submitted successfully', { timeout: 15000 });
-                console.log('  ✓ Confirmation message appeared');
-            } catch {
-                console.log('  ⚠ Confirmation message not detected within 15s');
-            }
-
-            console.log('🔁 Waiting for redirect to prompt creation page...');
-            try {
-                await page.waitForURL(/prompt\/create/, { timeout: 30000 });
-                console.log('  ✓ Redirected to creation page');
-            } catch {
-                console.log('  ⚠ Did not redirect to creation page within 30s');
-            }
-
+            await this.formHandler.waitForSubmissionConfirmation();
+            await this.formHandler.waitForRedirectToCreationPage();
+            
             const totalDuration = ((Date.now() - totalStart) / 1000).toFixed(1);
             console.log(`\n✅ Automation completed successfully in ${totalDuration}s\n`);
             console.log('🔍 Browser window remains open for analysis... (not closed automatically)');
