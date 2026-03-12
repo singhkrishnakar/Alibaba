@@ -7,7 +7,10 @@ import { PromptCreator } from './prompt_creator';
 import { ResponseEvaluator } from './response_evaluator';
 import { WorkbenchOrchestrator } from './workbench_orchestrator';
 import { FormHandler, MetadataConfig } from './form_handler';
-import { getConfig, AutomationConfig } from './config';
+import { getConfig, AutomationConfig } from './config/config';
+import { PromptTestData, promptData } from "./data/promptData";
+import { PromptConfig } from './types/prompt.types';
+import test from 'node:test';
 
 export class AutomationOrchestrator {
     private config: AutomationConfig;
@@ -31,47 +34,77 @@ export class AutomationOrchestrator {
         this.formHandler = new FormHandler(this.browser);
     }
 
-    async run(): Promise<void> {
+    async run(testData: PromptTestData): Promise<void> {
         console.log('\n⏱️  Starting LLM Toolkit Automation...\n');
         const totalStart = Date.now();
 
         try {
-            // Launch browser
-            await this.browser.launch(this.config.headless);
 
-            // Initialize WorkbenchOrchestrator after browser is launched
+
+            // Launch browser with saved session
+            await this.browser.launch(this.config.headless, true);
+
+            const page = this.browser.getPage();
+
+            await page.goto(`${this.config.project.baseUrl}/dashboard`);
+
+            console.log("Cookies:", await page.context().cookies());
+            //console.log("LocalStorage:", await page.evaluate(() => localStorage));
+            //console.log("SessionStorage:", await page.evaluate(() => sessionStorage));
+
             this.workbenchOrchestrator = new WorkbenchOrchestrator(this.browser);
 
-            // Step 1: Login
-            await this.authenticator.login(this.config.credentials, this.config.project.baseUrl);
+            // Validate session
+            const sessionValid = await this.projectSelector.validateSession(
+                this.config.project.baseUrl
+            );
 
-            // Step 2: Validate session
-            const sessionValid = await this.projectSelector.validateSession(this.config.project.baseUrl);
             if (!sessionValid) {
-                throw new Error('Session invalid after login');
+                throw new Error('Session expired. Run auth.setup.ts again');
             }
 
-            // Step 3: Navigate to project (only if necessary)
+
+            // STEP 1: Navigate to dashboard first
+            console.log('📊 Opening dashboard...');
+
+            await page.goto(`${this.config.project.baseUrl}/dashboard`);
+
+            await this.browser.waitForLoader();
+
+            await page.waitForLoadState('networkidle');
+
+            // Wait for loader
+            await this.workbenchLauncher.waitForLoader();
+
+            console.log('✓ Dashboard ready');
+
+            // STEP 2: Navigate to project
             await this.projectSelector.navigateToProject(
                 this.config.project.projectName,
                 this.config.project.baseUrl,
                 this.config.project.projectUrl
             );
 
-            // Step 4: Launch workbench
+            // Wait again for loader
+            await this.workbenchLauncher.waitForLoader();
+
+            // STEP 3: Launch workbench
             await this.workbenchLauncher.launch();
 
             // Step 5: Create prompt (abort if failure)
-            const created = await this.promptCreator.createPrompt(this.config.prompt);
+            const created = await this.promptCreator.createPrompt(testData.prompt, true);
             if (!created) {
                 throw new Error('Prompt creation failed, aborting automation');
             }
 
             // Step 6.1: Confirm navigation to workbench page
-            await this.workbenchOrchestrator!.verifyUserNavigatedToWorkbench(this.config.project.baseUrl, this.config.prompt);
+            await this.workbenchOrchestrator!.verifyUserNavigatedToWorkbench(this.config.project.baseUrl, testData);
 
             // Step 6.5: Wait for all 5 responses to appear on workbench (wait up to 10 minutes)
-            const allResponsesReady = await this.workbenchOrchestrator!.waitForAllResponses(5, 600000);
+            const allResponsesReady = await this.workbenchOrchestrator!.waitForAllResponses(
+                testData.expectedBaseResponsesCount,
+                600000
+            );
             if (!allResponsesReady) {
                 console.log('⚠ Not all responses generated, but continuing with available responses...');
             }
@@ -92,7 +125,7 @@ export class AutomationOrchestrator {
             if (frontierEnabled) {
                 // Step 7.6: Test on frontier models
                 // allow up to 5 minutes for frontier generation
-                const frontierReady = await this.workbenchOrchestrator!.testOnFrontierModels(10, 30000);
+                const frontierReady = await this.workbenchOrchestrator!.testOnFrontierModels(testData.frontierResponsesCount, 30000)
                 if (frontierReady) {
                     // Step 7.7: Retrieve frontier model responses
                     await this.workbenchOrchestrator!.getAllFrontierResponses();
@@ -131,15 +164,8 @@ export class AutomationOrchestrator {
             } catch { /* ignore */ }
 
             // Step 9: Fill metadata (Final Answer, Solution Process, Thinking Process, Answer Unit)
-            const metadata: MetadataConfig = {
-                finalAnswer: 'The answer is provided',
-                solutionProcess: 'Step by step process',
-                thinkingProcess: 'Logical reasoning applied',
-                answerUnit: 'N/A',
-                noUnitRequired: false,
-                customKnowledgePoint: 'Custom knowledge point for evaluation'
-            };
-            await this.formHandler.fillMetadata(metadata);
+
+            await this.formHandler.fillMetadata(testData.metadata);
             await this.browser.takeScreenshot('10_metadata_filled');
 
             // Step 11: Submit Review form
@@ -148,7 +174,7 @@ export class AutomationOrchestrator {
 
             await this.formHandler.waitForSubmissionConfirmation();
             await this.formHandler.waitForRedirectToCreationPage();
-            
+
             const totalDuration = ((Date.now() - totalStart) / 1000).toFixed(1);
             console.log(`\n✅ Automation completed successfully in ${totalDuration}s\n`);
             console.log('🔍 Browser window remains open for analysis... (not closed automatically)');
@@ -169,6 +195,19 @@ export class AutomationOrchestrator {
 
 // Run if executed directly
 if (require.main === module) {
-    const orchestrator = new AutomationOrchestrator();
-    orchestrator.run().catch(console.error);
+
+    (async () => {
+
+        const orchestrator = new AutomationOrchestrator();
+
+        for (const testData of promptData) {
+
+            console.log(`\n🚀 Running automation for: ${testData.prompt}\n`);
+
+            await orchestrator.run(testData);
+
+        }
+
+    })().catch(console.error);
+
 }

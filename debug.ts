@@ -2,7 +2,7 @@
 import { BrowserManager } from './browser_manager';
 import { Authenticator } from './authenticator';
 import { ProjectSelector } from './project_selector';
-import { getConfig } from './config';
+import { getConfig } from './config/config';
 
 async function debug() {
     const config = getConfig();

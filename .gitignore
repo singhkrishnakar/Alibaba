@@ -38,3 +38,7 @@ build/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Auth files (except example)
+playwright/.auth/*.json
+!playwright/.auth/user.example.json

@@ -1,6 +1,6 @@
 // Authenticator - Handles login
 import { BrowserManager } from './browser_manager';
-import { UserCredentials } from './config';
+import { UserCredentials } from './config/config';
 
 export class Authenticator {
     constructor(private browser: BrowserManager) { }

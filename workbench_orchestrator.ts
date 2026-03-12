@@ -1,7 +1,7 @@
 // Workbench Orchestrator - Handles response waiting and workbench operations
 import { BrowserManager } from './browser_manager';
 import { WorkbenchPage } from './workbench_page';
-import { PromptConfig } from './config';
+import { PromptTestData, promptData } from "./data/promptData";
 
 export class WorkbenchOrchestrator {
     private workbenchPage: WorkbenchPage;
@@ -11,7 +11,7 @@ export class WorkbenchOrchestrator {
     }
 
     /*Confirm navigation to workbench page by checking for a common workbench element (e.g., response container)*/
-    async verifyUserNavigatedToWorkbench(baseUrl: string, config: PromptConfig): Promise<void> {
+    async verifyUserNavigatedToWorkbench(baseUrl: string, config: PromptTestData): Promise<void> {
         console.log('🚀 Verifying navigation to workbench...');
 
         // Get current page from browser
@@ -26,12 +26,13 @@ export class WorkbenchOrchestrator {
             );
 
             // Wait for the user prompt to appear (confirming workbench is ready)
-            const workbenchPrompt = page.locator('div.sc-6e40ec64-9.ivqzyH > div > p', {
-                hasText: config.promptText
+            console.log('✓ Navigated to workbench URL, waiting for prompt to be visible...'+ config.prompt.promptText);
+            const workbenchPrompt = page.locator('> p', {
+                hasText: config.prompt.promptText
             });
             await workbenchPrompt.first().waitFor({ state: 'visible', timeout: 10000 });
 
-            console.log(`✓ Workbench loaded and prompt "${config.promptText}" is visible`);
+            console.log(`✓ Workbench loaded and prompt "${config.prompt.promptText}" is visible`);
         } catch (error) {
             console.error('⚠ Workbench page not reached after prompt creation', error);
 
@@ -236,84 +237,130 @@ export class WorkbenchOrchestrator {
      * Test prompt on frontier models
      * Clicks "Test on Frontier Models" button and waits for frontier responses
      */
-    async testOnFrontierModels(expectedFrontierResponses: number = 5, maxWaitTime: number = 600000): Promise<boolean> {
+    async testOnFrontierModels(
+        expectedFrontierResponses: number = 10,
+        maxWaitTime: number = 600000
+    ): Promise<boolean> {
+
         console.log('\n✊ Testing prompt on frontier models...');
-        const startTime = Date.now();
 
         try {
-            // record how many responses were present before the click
-            const beforeCount = await this.workbenchPage.getResponseCount();
-
             const page = this.browser.getPage();
 
-            // Try multiple selectors to find and click the frontier button
             const selectors = [
-                'button:has-text("Test on Frontier Models")',
-                'button:contains("Test on Frontier")',
-                'button:contains("Frontier")',
-                'button[aria-label*="Frontier" i]'
+                'button:has-text("Test on Frontier Models")'
             ];
 
             let buttonClicked = false;
+
             for (const selector of selectors) {
                 try {
+
                     const button = page.locator(selector);
-                    const count = await button.count().catch(() => 0);
-                    if (count > 0) {
+
+                    if (await button.count() > 0) {
+
                         await button.first().click({ timeout: 5000 }).catch(async () => {
-                            // If click fails, try alternative approach
+
                             await page.evaluate((sel) => {
                                 const el = document.querySelector(sel) as HTMLElement;
                                 if (el) el.click();
                             }, selector);
+
                         });
+
                         buttonClicked = true;
                         break;
                     }
-                } catch (e) {
-                    // Continue to next selector
-                }
+
+                } catch (e) { }
             }
 
             if (!buttonClicked) {
-                console.log('  ⚠ Could not find or click "Test on Frontier Models" button');
+                console.log('⚠ Could not find or click "Test on Frontier Models" button');
                 return false;
             }
 
-            console.log('  ✓ Clicked "Test on Frontier Models" button');
+            console.log('✓ Clicked "Test on Frontier Models" button');
+
             await this.browser.waitForTimeout(2000);
 
-            // wait for loader to disappear; frontier generation may take a long time
-            console.log('  … waiting for loader to clear (checking every 5s)');
-            // use at least 10 minutes or provided maxWaitTime, whichever is larger
-            const loaderTimeout = Math.max(maxWaitTime, 600000);
-            // Increase poll interval to 5s for Frontier to avoid aggressive 1s polling
-            const loaderGone = await this.waitForLoaderToDisappear(loaderTimeout, 5000);
-            if (!loaderGone) {
-                console.log('  ⚠ Loader still present after timeout, will still attempt to read responses');
-            }
+            // ✅ IMPORTANT FIX
+            const responsesLoaded = await this.waitForFrontierResponses(
+                expectedFrontierResponses,
+                maxWaitTime
+            );
 
-            // once loader is gone (or timeout reached) wait for response count
-            // `waitForAllResponses` expects a total count, so add the
-            // number of expected frontier results to the existing responses.
-            const totalTarget = beforeCount + expectedFrontierResponses;
-            console.log(`  ℹ Waiting for ${expectedFrontierResponses} new responses (total ≥ ${totalTarget})`);
-            const ready = await this.waitForAllResponses(totalTarget, maxWaitTime);
-            if (ready) {
-                // after responses are ready ensure loader actually cleared (use 5s polling)
-                const loaderGone2 = await this.waitForLoaderToDisappear(loaderTimeout, 5000);
-                if (!loaderGone2) {
-                    console.log('  ⚠ Loader still present even though responses ready (consider increasing timeout)');
-                }
-                await this.browser.takeScreenshot('07_frontier_responses_loaded');
-                return true;
-            }
-            return false;
+            return responsesLoaded;
+
         } catch (error) {
+
             console.error(`✗ Error testing on frontier models: ${error}`);
+
             return false;
         }
     }
+
+    /**
+ * Waits for Frontier responses to generate and validates their availability.
+ */
+    async waitForFrontierResponses(
+        expectedFrontierResponses: number = 10,
+        maxWaitTime: number = 600000
+    ): Promise<boolean> {
+
+        console.log(`🚀 Waiting for Frontier responses (expected: ${expectedFrontierResponses})`);
+
+        // Step 1: Get existing response count
+        const beforeCount = await this.workbenchPage.getResponseCount();
+        console.log(`📊 Existing responses before generation: ${beforeCount}`);
+
+        // Step 2: Wait for loader to disappear
+        const loaderTimeout = Math.max(maxWaitTime, 600000);
+
+        console.log(`⏳ Waiting for loader to clear (polling every 5s, timeout: ${loaderTimeout / 1000}s)`);
+
+        const loaderGone = await this.waitForLoaderToDisappear(loaderTimeout, 5000);
+
+        if (!loaderGone) {
+            console.warn("⚠ Loader still present after timeout — continuing to check responses.");
+        }
+
+        // Step 3: Calculate total expected responses
+        const totalTarget = beforeCount + expectedFrontierResponses;
+
+        console.log(`📥 Waiting for ${expectedFrontierResponses} new responses (target total ≥ ${totalTarget})`);
+
+        const responsesReady = await this.waitForAllResponses(totalTarget, maxWaitTime);
+
+        if (responsesReady) {
+
+            console.log("✅ Expected frontier responses received.");
+
+            // Step 4: Ensure loader actually cleared
+            const loaderCleared = await this.waitForLoaderToDisappear(loaderTimeout, 10000);
+
+            if (!loaderCleared) {
+                console.warn("⚠ Loader still visible even though responses are ready.");
+            }
+
+            // Step 5: Capture screenshot
+            await this.browser.takeScreenshot("07_frontier_responses_loaded");
+
+            return true;
+        }
+
+        // Step 6: Failure case
+        console.warn("⚠ Frontier responses did not fully load within expected time.");
+
+        console.log("📋 Logging available responses for debugging...");
+        await this.getAllFrontierResponses();
+
+        await this.browser.takeScreenshot("07_frontier_responses_timeout");
+
+        return false;
+    }
+
 
     /**
      * Get all frontier model responses

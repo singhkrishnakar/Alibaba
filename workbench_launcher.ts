@@ -2,7 +2,7 @@
 import { BrowserManager } from './browser_manager';
 
 export class WorkbenchLauncher {
-    constructor(private browser: BrowserManager) {}
+    constructor(private browser: BrowserManager) { }
 
     async launch(): Promise<void> {
         console.log('🚀 Launching workbench...');
@@ -10,7 +10,7 @@ export class WorkbenchLauncher {
 
         try {
             const page = this.browser.getPage();
-            
+
             // Check if already on workbench
             const title = await page.title();
             const url = page.url();
@@ -29,25 +29,41 @@ export class WorkbenchLauncher {
             );
 
             if (menuFound) {
-                // Wait for menu dropdown to appear
-                await this.browser.waitForTimeout(300);
-                console.log('  ℹ Menu opened, clicking Launch Workbench option');
-                await this.browser.waitForTimeout(500);
-                
-                // Try to click workbench option - it's in a <li><button><span> structure
-                const workbenchClicked = await this.browser.click(
-                    'li button span:has-text("Launch Workbench")||li button:has-text("Launch Workbench")||span:has-text("Launch Workbench")',
-                    1000
-                );
 
-                if (workbenchClicked) {
-                    console.log('  ℹ Workbench option clicked, pausing for visibility');
-                    await this.browser.waitForTimeout(1000);
-                    await this.browser.waitForNavigation(5000);
-                    await this.browser.waitForTimeout(300);
+                const page = this.browser.getPage();
+
+                console.log('  ℹ Waiting for Launch Workbench menu item...');
+
+                const menuItems = await page.locator('[role="menu"] li').allTextContents();
+                console.log('Menu items found:', menuItems);
+
+                try {
+
+                    //const workbenchOption = page.locator('text=Launch Workbench').first();
+
+                    const workbenchOption = page.locator(
+                        '[role="menu"] >> text=Launch Workbench'
+                    );
+                    await workbenchOption.waitFor({
+                        state: 'visible',
+                        timeout: 5000
+                    });
+
+                    console.log('  ✓ Clicking Launch Workbench');
+
+                    await workbenchOption.click();
+
+                    await page.waitForLoadState('domcontentloaded');
+
                     const duration = Date.now() - startTime;
                     console.log(`✓ Workbench launched (${duration}ms)`);
+
                     return;
+
+                } catch (err) {
+
+                    console.log('  ⚠ Launch Workbench not found in menu');
+
                 }
             }
 
@@ -75,5 +91,18 @@ export class WorkbenchLauncher {
             console.error(`✗ Workbench launch error: ${error}`);
             // Don't throw - continue anyway
         }
+    }
+
+    async waitForLoader(selector: string = '.loader-container') {
+        const page = this.browser.getPage();
+
+        console.log("⏳ Waiting for loader to disappear...");
+
+        await page.waitForSelector(selector, {
+            state: 'hidden',
+            timeout: 10000
+        }).catch(() => { });
+
+        console.log("✓ Loader gone");
     }
 }

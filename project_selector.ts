@@ -2,7 +2,7 @@
 import { BrowserManager } from './browser_manager';
 
 export class ProjectSelector {
-    constructor(private browser: BrowserManager) {}
+    constructor(private browser: BrowserManager) { }
 
     async navigateToProject(projectName: string, baseUrl: string, projectUrl?: string): Promise<void> {
         console.log('📁 Navigating to project...');
@@ -29,15 +29,15 @@ export class ProjectSelector {
             if (projectUrl) {
                 const fullUrl = `${baseUrl}${projectUrl}`;
                 console.log(`  → Navigating to: ${fullUrl}`);
-                
+
                 // Navigate with minimal wait
                 await this.browser.getPage().goto(fullUrl, { waitUntil: 'domcontentloaded', timeout: 8000 });
                 await this.browser.waitForTimeout(1000);
-                
+
                 // Check if we got redirected back to login
                 await this.browser.waitForTimeout(1000);
                 const newUrl = page.url();
-                
+
                 if (newUrl.includes('/login')) {
                     throw new Error('Session expired - redirected to login page');
                 }
@@ -77,7 +77,9 @@ export class ProjectSelector {
                 return true;
             }
 
-            console.log(`  ? Session unknown at ${currentUrl}`);
+            if (page.url() !== 'about:blank') {
+                console.log(`Session active at ${page.url()}`);
+            }
             return true; // Assume valid if not on login
         } catch (error) {
             console.error(`✗ Session validation error: ${error}`);

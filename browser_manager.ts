@@ -17,23 +17,31 @@ export class BrowserManager {
         }
     }
 
-    async launch(headless: boolean = false): Promise<void> {
+    async launch(headless: boolean = false, useSession: boolean = false): Promise<void> {
         try {
+
             this.browser = await chromium.launch({ headless });
-            this.context = await this.browser.newContext();
+
+            if (useSession) {
+                this.context = await this.browser.newContext({
+                    storageState: 'playwright/.auth/user.json'
+                });
+                console.log('✓ Browser launched with saved session');
+            } else {
+                this.context = await this.browser.newContext();
+                console.log('✓ Browser launched');
+            }
+
             this.page = await this.context.newPage();
-            
-            // Set timeouts globally
-            this.page.setDefaultTimeout(2000);
-            this.page.setDefaultNavigationTimeout(8000);
-            
-            console.log('✓ Browser launched');
+
+            this.page.setDefaultTimeout(5000);
+            this.page.setDefaultNavigationTimeout(15000);
+
         } catch (error) {
             console.error(`✗ Failed to launch browser: ${error}`);
             throw error;
         }
     }
-
     async close(): Promise<void> {
         try {
             if (this.context) await this.context.close();
@@ -47,6 +55,11 @@ export class BrowserManager {
     getPage(): Page {
         if (!this.page) throw new Error('Browser not launched');
         return this.page;
+    }
+
+    getContext(): BrowserContext {
+        if (!this.context) throw new Error('Browser context not initialized');
+        return this.context;
     }
 
     async navigate(url: string, waitUntil: 'domcontentloaded' | 'networkidle' = 'domcontentloaded', retries = 3): Promise<void> {
@@ -92,7 +105,7 @@ export class BrowserManager {
      */
     async click(selector: string, timeout: number = 1500): Promise<boolean> {
         const selectors = selector.split('||').map(s => s.trim());
-        
+
         for (const sel of selectors) {
             try {
                 // Try to click using page.click which waits for element
@@ -104,7 +117,7 @@ export class BrowserManager {
                 // Try next selector
             }
         }
-        
+
         console.error(`✗ Failed to click any of: ${selector}`);
         return false;
     }
@@ -117,7 +130,7 @@ export class BrowserManager {
      */
     async fill(selector: string, text: string, timeout: number = 2000): Promise<boolean> {
         const selectors = selector.split('||').map(s => s.trim());
-        
+
         for (const sel of selectors) {
             try {
                 await this.page!.fill(sel, text, { timeout });
@@ -128,7 +141,7 @@ export class BrowserManager {
                 // Try next selector
             }
         }
-        
+
         console.error(`✗ Failed to fill any of: ${selector}`);
         return false;
     }
@@ -225,11 +238,39 @@ export class BrowserManager {
     async waitForNavigation(timeout: number = 5000): Promise<void> {
         try {
             await Promise.race([
-                this.page!.waitForNavigation({ timeout }).catch(() => {}),
-                this.page!.waitForLoadState('domcontentloaded', { timeout }).catch(() => {})
+                this.page!.waitForNavigation({ timeout }).catch(() => { }),
+                this.page!.waitForLoadState('domcontentloaded', { timeout }).catch(() => { })
             ]);
         } catch (e) {
             // Silent fail
         }
+    }
+
+    // Wait for loader to disappear
+    async waitForLoader() {
+
+        const page = this.getPage();
+
+        console.log('⏳ Waiting for loader to disappear...');
+
+        await page.waitForSelector('.loader-container', {
+            state: 'hidden',
+            timeout: 15000
+        }).catch(() => { });
+
+        console.log('✓ Page ready');
+    }
+
+    async validateSession(baseUrl: string): Promise<boolean> {
+
+        const page = this.getPage();
+
+        await page.goto(`${baseUrl}/dashboard`, { waitUntil: 'domcontentloaded' });
+
+        if (page.url().includes('login')) {
+            return false;
+        }
+
+        return true;
     }
 }

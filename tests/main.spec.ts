@@ -1,14 +1,17 @@
 import { test } from '@playwright/test';
 import { AutomationOrchestrator } from '../main';
-import { getConfig } from '../config';
+import { promptData } from '../data/promptData';
+import { getConfig } from '../config/config';
 
-test('LLM Automation workflow', async ({}, testInfo) => {
+promptData.forEach((data, index) => {
 
-  test.setTimeout(650_000); // 10+ minutes
+  test(`LLM Prompt ${index + 1}`, async () => {
 
-  const automationConfig = getConfig();
-  const orchestrator = new AutomationOrchestrator(automationConfig);
+    const config = getConfig();
+    const orchestrator = new AutomationOrchestrator(config);
 
-  await orchestrator.run();
+    await orchestrator.run(data);
+
+  });
 
 });
