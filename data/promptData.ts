@@ -28,25 +28,5 @@ export const promptData: PromptTestData[] = [
             noUnitRequired: false,
             customKnowledgePoint: "Physics"
         }
-    }/*,
-    {
-        prompt: {
-            promptType: "essay",
-            promptText: "Just say bye.",
-            educationLevel: "Undergraduate",
-            subject: "Organic Chemistry"
-        },
-
-        expectedBaseResponsesCount: 5,
-        frontierResponsesCount: 10,
-
-        metadata: {
-            finalAnswer: "The answer is provided",
-            solutionProcess: "Step by step process",
-            thinkingProcess: "Logical reasoning applied",
-            answerUnit: "N/A",
-            noUnitRequired: false,
-            customKnowledgePoint: "Physics"
-        }
-    }*/
+    }
 ];

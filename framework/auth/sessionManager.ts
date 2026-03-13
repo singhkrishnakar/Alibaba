@@ -1,4 +1,6 @@
 import { userConfig } from '../../config/users.config';
+import { BrowserManager } from '../browser/browserManager';
+
 
 export class UserSessionManager {
 
@@ -18,6 +20,37 @@ export class UserSessionManager {
     }
 
     return `playwright/.auth/user${workerIndex}.json`;
+  }
+
+}
+
+
+export class SessionValidator {
+
+  constructor(private browser: BrowserManager) {}
+
+  async validateSession(baseUrl: string): Promise<boolean> {
+
+    const page = this.browser.getPage();
+
+    try {
+
+      await page.goto(`${baseUrl}/dashboard`, { waitUntil: "domcontentloaded" });
+
+      // If redirected to login page → session expired
+      if (page.url().includes("login")) {
+        return false;
+      }
+
+      return true;
+
+    } catch (err) {
+
+      console.error("Session validation failed:", err);
+      return false;
+
+    }
+
   }
 
 }

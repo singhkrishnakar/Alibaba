@@ -1,7 +1,7 @@
 import { test } from '@playwright/test';
-import { AutomationOrchestrator } from '../framework/orchestrators/automationOrchestrator';
-import { promptData } from '../data/promptData';
-import { getConfig } from '../config/config';
+import { AutomationOrchestrator } from '../../framework/orchestrators/automationOrchestrator';
+import { promptData } from '../../data/promptData';
+import { getConfig } from '../../config/config';
 
 for (const [index, data] of promptData.entries()) {
 

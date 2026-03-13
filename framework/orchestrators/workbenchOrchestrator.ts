@@ -3,20 +3,47 @@ import { BrowserManager } from '../browser/browserManager';
 import { WorkbenchPage } from '../pages/workbenchPage';
 import { PromptTestData, promptData } from "../../data/promptData";
 import { Page } from 'playwright';
+import { AutomationConfig } from '../../config/config';
 
 export class WorkbenchOrchestrator {
     private workbenchPage: WorkbenchPage | null = null;
 
-    constructor(private browser: BrowserManager) { }
+    constructor(private browser: BrowserManager,
+        private config: AutomationConfig
+    ) { }
 
-    async initWorkbenchPage() {
-        const page = this.browser.getPage(); // throws if browser not launched
-        this.workbenchPage = new WorkbenchPage(page);
+    // async initWorkbenchPage() {
+    //     const page = this.browser.getPage(); // throws if browser not launched
+    //     this.workbenchPage = new WorkbenchPage(page);
+    // }
+
+    async initialize() {
+
+        this.workbenchPage = new WorkbenchPage(this.browser);
+
+        //await this.workbenchPage.waitForResponses();
+
     }
 
     get workbench(): WorkbenchPage {
         if (!this.workbenchPage) throw new Error('WorkbenchPage not initialized. Call initWorkbenchPage() first.');
         return this.workbenchPage;
+    }
+
+
+
+    async handleResponses(testData: PromptTestData) {
+
+        await this.verifyUserNavigatedToWorkbench(
+            this.config.project.baseUrl,
+            testData
+        );
+
+        await this.waitForAllResponses(
+            testData.expectedBaseResponsesCount,
+            600000
+        );
+
     }
 
     /*Confirm navigation to workbench page by checking for a common workbench element (e.g., response container)*/

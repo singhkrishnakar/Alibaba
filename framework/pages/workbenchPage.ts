@@ -1,68 +1,69 @@
 // Workbench Page Object - Centralized locators and element interactions
 import { Page, Locator } from 'playwright';
 import * as fs from 'fs';
+import { BasePage } from './basePage';
+import { BrowserManager } from '../browser/browserManager';
 
-export class WorkbenchPage {
-    private page: Page;
-    constructor(page: Page) { 
-        this.page = page; // explicitly assign
+export class WorkbenchPage extends BasePage {
+    constructor(browser: BrowserManager) {
+        super(browser);
     }
 
     // ==================== RESPONSE SECTION ====================
     // Response container - Using standard data-testid selector which is valid CSS
     get responses(): Locator {
-        return this.page.locator('[data-testid="response"]');
+        return this.page().locator('[data-testid="response"]');
     }
 
     getResponseByIndex(index: number): Locator {
-        return this.page.locator('[data-testid="response"]').nth(index);
+        return this.page().locator('[data-testid="response"]').nth(index);
     }
 
     // Response text/content - Extract from the response container
     get responseText(): Locator {
-        return this.page.locator('[data-testid="response"] div, [data-testid="response"] p, [data-testid="response"] span');
+        return this.page().locator('[data-testid="response"] div, [data-testid="response"] p, [data-testid="response"] span');
     }
 
     getResponseTextByIndex(index: number): Locator {
-        return this.page.locator('[data-testid="response"]').nth(index).locator('div, p, span');
+        return this.page().locator('[data-testid="response"]').nth(index).locator('div, p, span');
     }
 
     // Radio buttons for marking responses
     get responseRadioButtons(): Locator {
-        return this.page.locator('input[type="radio"]');
+        return this.page().locator('input[type="radio"]');
     }
 
     getResponseRadioButton(index: number): Locator {
-        return this.page.locator('input[type="radio"]').nth(index);
+        return this.page().locator('input[type="radio"]').nth(index);
     }
 
     // Correct/Incorrect status buttons
     get correctRadio(): Locator {
-        return this.page.locator('input[type="radio"]:near(label:has-text("Correct"))');
+        return this.page().locator('input[type="radio"]:near(label:has-text("Correct"))');
     }
 
     get incorrectRadio(): Locator {
-        return this.page.locator('input[type="radio"]:near(label:has-text("Incorrect"))');
+        return this.page().locator('input[type="radio"]:near(label:has-text("Incorrect"))');
     }
 
     getRadioByStatus(status: 'Correct' | 'Incorrect'): Locator {
-        return this.page.locator(`input[type="radio"]:near(label:has-text("${status}"))`);
+        return this.page().locator(`input[type="radio"]:near(label:has-text("${status}"))`);
     }
 
     // Radio button labels
     get radioLabels(): Locator {
-        return this.page.locator('label[for], span:near(input[type="radio"])');
+        return this.page().locator('label[for], span:near(input[type="radio"])');
     }
 
     // ==================== QUESTION/PROMPT DISPLAY ====================
 
     // Question/Prompt display area
     get questionDisplay(): Locator {
-        return this.page.locator('[data-testid="question"], [data-testid="prompt"], h2, h3');
+        return this.page().locator('[data-testid="question"], [data-testid="prompt"], h2, h3');
     }
 
     get questionText(): Locator {
-        return this.page.locator('[data-testid="question"] p, [data-testid="prompt"] p, [data-testid="question"], [data-testid="prompt"]');
+        return this.page().locator('[data-testid="question"] p, [data-testid="prompt"] p, [data-testid="question"], [data-testid="prompt"]');
     }
 
     // ==================== HELPER METHODS ====================
@@ -75,7 +76,7 @@ export class WorkbenchPage {
 
         // Try to read from summary text: "5 response(s) out of 5"
         try {
-            const summaryCount = await this.page.evaluate(() => {
+            const summaryCount = await this.page().evaluate(() => {
                 const divs = Array.from(document.querySelectorAll('div'));
                 const summary = divs.find(d => d.textContent?.includes('response(s) out of'));
 
@@ -98,7 +99,7 @@ export class WorkbenchPage {
         }
 
         // Fallback only if summary completely missing
-        const radioCount = await this.page.locator('input[type="radio"]').count();
+        const radioCount = await this.page().locator('input[type="radio"]').count();
 
         if (radioCount > 0) {
             const responses = Math.floor(radioCount / 2);
@@ -116,7 +117,7 @@ export class WorkbenchPage {
     async getAllResponseTexts(): Promise<string[]> {
         // Use page.evaluate to extract all response texts in one DOM pass (avoids locator timeouts)
         try {
-            const texts = await this.page.evaluate(() => {
+            const texts = await this.page().evaluate(() => {
                 const responses = Array.from(document.querySelectorAll('[data-testid="response"]'));
                 return responses.map((el) => {
                     // Stop before the marking section that contains both Correct and Incorrect
@@ -136,7 +137,7 @@ export class WorkbenchPage {
             // If nothing found, dump page HTML for debugging
             if (!texts || (Array.isArray(texts) && texts.length === 0)) {
                 try {
-                    const html = this.page.content();
+                    const html = this.page().content();
                     const filename = `./screenshots/debug_responses_${Date.now()}.html`;
                     Promise.resolve(html).then(h => fs.writeFileSync(filename, h));
                     console.log(`    📄 Dumped workbench HTML to ${filename}`);
@@ -178,7 +179,7 @@ export class WorkbenchPage {
      */
     async allResponsesMarked(): Promise<boolean> {
         const radioButtons = await this.responseRadioButtons.count();
-        const checkedRadios = await this.page.locator('input[type="radio"]:checked').count();
+        const checkedRadios = await this.page().locator('input[type="radio"]:checked').count();
         return radioButtons > 0 && checkedRadios === radioButtons;
     }
 
@@ -186,7 +187,7 @@ export class WorkbenchPage {
      * Wait for responses to appear
      */
     async waitForResponses(timeout: number = 15000): Promise<void> {
-        await this.page.waitForSelector('[data-testid="response"]', { timeout });
+        await this.page().waitForSelector('[data-testid="response"]', { timeout });
     }
 
     /**
@@ -199,7 +200,7 @@ export class WorkbenchPage {
             if (count >= expectedCount) {
                 return true;
             }
-            await this.page.waitForTimeout(500);
+            await this.page().waitForTimeout(500);
         }
         return false;
     }
@@ -216,14 +217,14 @@ export class WorkbenchPage {
      * Take page screenshot
      */
     async takeScreenshot(filename: string): Promise<void> {
-        await this.page.screenshot({ path: `./screenshots/${filename}.png` });
+        await this.page().screenshot({ path: `./screenshots/${filename}.png` });
     }
 
     /**
      * Dump page HTML for debugging
      */
     async dumpPageHTML(filename: string): Promise<void> {
-        const html = await this.page.content();
+        const html = await this.page().content();
         const fs = require('fs');
         fs.writeFileSync(`./screenshots/${filename}.html`, html);
     }

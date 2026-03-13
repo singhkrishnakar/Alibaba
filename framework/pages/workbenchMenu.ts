@@ -1,7 +1,7 @@
 // Workbench Launcher - Launches workbench
 import { BrowserManager } from '../browser/browserManager';
 
-export class WorkbenchLauncher {
+export class WorkbenchMenu {
     constructor(private browser: BrowserManager) { }
 
     async launch(): Promise<void> {

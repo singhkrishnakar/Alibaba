@@ -1,16 +1,16 @@
 // Prompt Creator - Creates and runs prompts
-import { BrowserManager } from './framework/browser/browserManager';
-import { PromptConfig } from './config/config';
+import { BrowserManager } from '../browser/browserManager';
+import { PromptConfig } from '../../config/config';
 
 export class PromptCreator {
     constructor(private browser: BrowserManager) { }
 
     async createPrompt(config: PromptConfig, abortOnFailure = true): Promise<boolean> {
-        console.log('📝 Creating prompt...');
+
+        console.log("📝 Creating prompt...");
         const startTime = Date.now();
 
-        //const page = this.browser.getPage();
-
+        
         try {
 
             // Ensure prompt type is selected (e.g., "essay")

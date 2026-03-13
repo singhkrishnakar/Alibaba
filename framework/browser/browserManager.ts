@@ -273,4 +273,10 @@ export class BrowserManager {
 
         return true;
     }
+
+   async start(headless: boolean, useSavedSession: boolean = true) {
+    await this.launch(headless, useSavedSession);
+    console.log("✓ Browser launched with saved session");
+}
+
 }
