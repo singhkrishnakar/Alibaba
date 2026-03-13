@@ -1,4 +1,4 @@
-import { userConfig } from '../config/users.config';
+import { userConfig } from '../../config/users.config';
 
 export class UserSessionManager {
 

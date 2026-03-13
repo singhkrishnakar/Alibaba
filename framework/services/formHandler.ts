@@ -1,5 +1,5 @@
 // Form Handler - Fills and submits forms
-import { BrowserManager } from './browser_manager';
+import { BrowserManager } from '../browser/browserManager';
 
 export interface MetadataConfig {
     finalAnswer: string;

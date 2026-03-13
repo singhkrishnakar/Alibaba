@@ -1,9 +1,9 @@
 import { test } from '@playwright/test';
-import { AutomationOrchestrator } from '../main';
+import { AutomationOrchestrator } from '../framework/orchestrators/automationOrchestrator';
 import { promptData } from '../data/promptData';
 import { getConfig } from '../config/config';
 
-promptData.forEach((data, index) => {
+for (const [index, data] of promptData.entries()) {
 
   test(`LLM Prompt ${index + 1}`, async () => {
 
@@ -14,4 +14,4 @@ promptData.forEach((data, index) => {
 
   });
 
-});
+};

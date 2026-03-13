@@ -1,7 +1,7 @@
 // Debug tool to find workbench launch selectors
-import { BrowserManager } from './browser_manager';
-import { Authenticator } from './authenticator';
-import { ProjectSelector } from './project_selector';
+import { BrowserManager } from './framework/browser/browserManager';
+import { Authenticator } from './framework/auth/authenticator';
+import { ProjectSelector } from './framework/services/projectSelector';
 import { getConfig } from './config/config';
 
 async function debug() {
