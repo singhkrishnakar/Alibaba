@@ -1,6 +1,6 @@
 import { test } from '@playwright/test';
 import { promptData } from '../../data/promptData';
-import { AutomationOrchestrator } from '../../framework/orchestrators/automationOrchestrator';
+import { AutomationOrchestrator } from '../../framework/orchestrators/alibabaPromptOrchestrator';
 
 for (const data of promptData) {
 

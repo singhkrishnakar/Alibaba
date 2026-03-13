@@ -1,5 +1,5 @@
 import { test } from '@playwright/test';
-import { AutomationOrchestrator } from '../../framework/orchestrators/automationOrchestrator';
+import { AutomationOrchestrator } from '../../framework/orchestrators/alibabaPromptOrchestrator';
 import { promptData } from '../../data/promptData';
 import { getConfig } from '../../config/config';
 

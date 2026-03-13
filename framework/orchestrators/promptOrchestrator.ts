@@ -3,72 +3,67 @@ import { PromptCreator } from "../services/promptCreator";
 import { ResponseEvaluator } from "../services/responseEvaluator";
 import { WorkbenchOrchestrator } from "./workbenchOrchestrator";
 import { AutomationConfig, PromptConfig } from "../../config/config";
+import { TestContext } from "../core/TestContext";
 
 export class PromptOrchestrator {
 
-    constructor(
-        private promptCreator: PromptCreator,
-        private workbenchOrchestrator: WorkbenchOrchestrator,
-        private responseEvaluator: ResponseEvaluator,
-        private config: AutomationConfig,
-    ) { }
+    private context: TestContext
+    
+        constructor(context: TestContext) {
+            this.context = context
+        }
 
     async runPrompt(testData: PromptTestData) {
 
-        const created = await this.promptCreator.createPrompt(testData.prompt, true);
+        const created = await this.context.promptCreator.createPrompt(testData.prompt, true);
         if (!created) throw new Error("Prompt creation failed");
 
-        await this.workbenchOrchestrator.verifyUserNavigatedToWorkbench(
-            this.config.project.baseUrl,
+        await this.context.workbenchOrchestrator.verifyUserNavigatedToWorkbench(
+            this.context.config.project.baseUrl,
             testData
         );
 
-        await this.workbenchOrchestrator.waitForAllResponses(
+        await this.context.workbenchOrchestrator.waitForAllResponses(
             testData.expectedBaseResponsesCount,
             600000
         );
 
-        await this.workbenchOrchestrator.getAllResponses();
-        await this.responseEvaluator.mark2Incorrect3Correct();
+        await this.context.workbenchOrchestrator.getAllResponses();
+        await this.context.responseEvaluator.mark2Incorrect3Correct();
     }
 
-    // async createPrompt(testData: PromptTestData) {
-    //     const created = await this.promptCreator.createPrompt(testData, true);
-    //     if (!created) throw new Error('Prompt creation failed, aborting automation');
-    // }
-
     async createPrompt(promptConfig: PromptConfig): Promise<void> {
-        const created = await this.promptCreator.createPrompt(promptConfig);
+        const created = await this.context.promptCreator.createPrompt(promptConfig);
         if (!created) throw new Error('Prompt creation failed, aborting automation');
     }
 
     async handleResponses(testData: PromptTestData) {
-        await this.workbenchOrchestrator.verifyUserNavigatedToWorkbench(
-            this.config.project.baseUrl,
+        await this.context.workbenchOrchestrator.verifyUserNavigatedToWorkbench(
+            this.context.config.project.baseUrl,
             testData
         );
 
-        const allResponsesReady = await this.workbenchOrchestrator!.waitForAllResponses(
+        const allResponsesReady = await this.context.workbenchOrchestrator!.waitForAllResponses(
             testData.expectedBaseResponsesCount, 600000
         );
 
         if (!allResponsesReady) console.warn('⚠ Not all responses generated');
 
-        await this.workbenchOrchestrator!.getAllResponses();
-        await this.responseEvaluator.mark2Incorrect3Correct();
+        await this.context.workbenchOrchestrator!.getAllResponses();
+        await this.context.responseEvaluator.mark2Incorrect3Correct();
 
-        const beforeFrontierCount = await this.workbenchOrchestrator!.getResponseCount();
-        const frontierEnabled = await this.workbenchOrchestrator!.waitForFrontierButtonEnabled(15000);
+        const beforeFrontierCount = await this.context.workbenchOrchestrator!.getResponseCount();
+        const frontierEnabled = await this.context.workbenchOrchestrator!.waitForFrontierButtonEnabled(15000);
 
         if (frontierEnabled) {
-            const frontierReady = await this.workbenchOrchestrator!.testOnFrontierModels(
+            const frontierReady = await this.context.workbenchOrchestrator!.testOnFrontierModels(
                 testData.frontierResponsesCount, 30000
             );
             if (frontierReady) {
-                await this.workbenchOrchestrator!.getAllFrontierResponses();
-                const afterFrontierCount = await this.workbenchOrchestrator!.getResponseCount();
+                await this.context.workbenchOrchestrator!.getAllFrontierResponses();
+                const afterFrontierCount = await this.context.workbenchOrchestrator!.getResponseCount();
                 const newResponses = afterFrontierCount - beforeFrontierCount;
-                if (newResponses > 0) await this.responseEvaluator.mark2Incorrect3Correct(beforeFrontierCount);
+                if (newResponses > 0) await this.context.responseEvaluator.mark2Incorrect3Correct(beforeFrontierCount);
             }
         }
     }
@@ -76,24 +71,24 @@ export class PromptOrchestrator {
 
     private async executePromptFlow(testData: PromptTestData) {
 
-        const created = await this.promptCreator.createPrompt(testData.prompt, true);
+        const created = await this.context.promptCreator.createPrompt(testData.prompt, true);
 
         if (!created) {
             throw new Error('Prompt creation failed');
         }
 
-        await this.workbenchOrchestrator!.verifyUserNavigatedToWorkbench(
-            this.config.project.baseUrl,
+        await this.context.workbenchOrchestrator!.verifyUserNavigatedToWorkbench(
+            this.context.config.project.baseUrl,
             testData
         );
 
-        await this.workbenchOrchestrator!.waitForAllResponses(
+        await this.context.workbenchOrchestrator!.waitForAllResponses(
             testData.expectedBaseResponsesCount,
             600000
         );
 
-        await this.workbenchOrchestrator!.getAllResponses();
+        await this.context.workbenchOrchestrator!.getAllResponses();
 
-        await this.responseEvaluator.mark2Incorrect3Correct();
+        await this.context.responseEvaluator.mark2Incorrect3Correct();
     }
 }

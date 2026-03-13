@@ -1,41 +1,28 @@
 // Workbench Orchestrator - Handles response waiting and workbench operations
-import { BrowserManager } from '../browser/browserManager';
-import { WorkbenchPage } from '../pages/workbenchPage';
-import { PromptTestData, promptData } from "../../data/promptData";
+
 import { Page } from 'playwright';
 import { AutomationConfig } from '../../config/config';
+import { TestContext } from '../core/TestContext';
+import { PromptTestData } from '../../data/promptData';
 
 export class WorkbenchOrchestrator {
-    private workbenchPage: WorkbenchPage | null = null;
+    private context: TestContext
 
-    constructor(private browser: BrowserManager,
-        private config: AutomationConfig
-    ) { }
+    constructor(context: TestContext) {
+        this.context = context
+    }
 
-    // async initWorkbenchPage() {
-    //     const page = this.browser.getPage(); // throws if browser not launched
-    //     this.workbenchPage = new WorkbenchPage(page);
-    // }
 
     async initialize() {
 
-        this.workbenchPage = new WorkbenchPage(this.browser);
-
-        //await this.workbenchPage.waitForResponses();
+        await this.context.workbenchMenu.waitForLoader()
 
     }
-
-    get workbench(): WorkbenchPage {
-        if (!this.workbenchPage) throw new Error('WorkbenchPage not initialized. Call initWorkbenchPage() first.');
-        return this.workbenchPage;
-    }
-
-
 
     async handleResponses(testData: PromptTestData) {
 
         await this.verifyUserNavigatedToWorkbench(
-            this.config.project.baseUrl,
+            this.context.config.project.baseUrl,
             testData
         );
 
@@ -51,7 +38,7 @@ export class WorkbenchOrchestrator {
         console.log('🚀 Verifying navigation to workbench...');
 
         // Get current page from browser
-        let page = this.browser.getPage();
+        let page = this.context.browser.getPage();
         if (!page) throw new Error('No active page available');
 
         try {
@@ -94,7 +81,7 @@ export class WorkbenchOrchestrator {
      * Looks for common keywords and spinner classes. (enhanced polling version below)
      */
     async waitForLoaderToDisappear(timeout: number = 600000, pollInterval: number = 10000): Promise<boolean> {
-        const page = this.browser.getPage();
+        const page = this.context.browser.getPage();
         const start = Date.now();
         try {
             while (Date.now() - start < timeout) {
@@ -114,7 +101,7 @@ export class WorkbenchOrchestrator {
                 }
 
                 console.log(`  … loader still present, waiting ${pollInterval / 1000}s`);
-                await this.browser.waitForTimeout(pollInterval);
+                await this.context.browser.waitForTimeout(pollInterval);
             }
 
             console.log('  ⚠ Loader did not disappear within timeout');
@@ -133,7 +120,7 @@ export class WorkbenchOrchestrator {
         let lastLoggedCount = 0;
 
         while (Date.now() - startTime < maxWaitTime) {
-            const page = this.browser.getPage();
+            const page = this.context.browser.getPage();
             if (!page || page.isClosed()) throw new Error('Page closed while waiting for responses');
 
             // Wait for loader to disappear safely
@@ -142,7 +129,7 @@ export class WorkbenchOrchestrator {
             });
 
             // Count responses
-            const currentCount = await this.workbenchPage!.getResponseCount().catch(e => {
+            const currentCount = await this.context.workbenchPage!.getResponseCount().catch(e => {
                 console.warn('getResponseCount failed (ignored):', e);
                 return 0;
             });
@@ -157,7 +144,7 @@ export class WorkbenchOrchestrator {
                 return true;
             }
 
-            await this.browser.waitForTimeout(pollInterval);
+            await this.context.browser.waitForTimeout(pollInterval);
         }
 
         console.warn(`⚠ Timeout reached; got ${lastLoggedCount}/${expectedCount} responses`);
@@ -170,7 +157,7 @@ export class WorkbenchOrchestrator {
     async getAllResponses(): Promise<string[]> {
         try {
             console.log('📖 Retrieving all response texts...');
-            const responses = await this.workbenchPage!.getAllResponseTexts();
+            const responses = await this.context.workbenchPage!.getAllResponseTexts();
             console.log(`✓ Retrieved ${responses.length} responses:`);
             responses.forEach((text, index) => {
                 console.log(`  [${index + 1}] ${text.substring(0, 80)}...`);
@@ -187,7 +174,7 @@ export class WorkbenchOrchestrator {
      */
     async getResponse(index: number): Promise<string> {
         try {
-            return await this.workbenchPage!.getResponseText(index);
+            return await this.context.workbenchPage!.getResponseText(index);
         } catch (error) {
             console.error(`✗ Error getting response ${index}: ${error}`);
             return '';
@@ -199,7 +186,7 @@ export class WorkbenchOrchestrator {
      */
     async getQuestionText(): Promise<string> {
         try {
-            const question = await this.workbenchPage!.getQuestionText();
+            const question = await this.context.workbenchPage!.getQuestionText();
             console.log(`📋 Question: ${question.substring(0, 100)}...`);
             return question;
         } catch (error) {
@@ -215,7 +202,7 @@ export class WorkbenchOrchestrator {
      */
     async getResponseCount(): Promise<number> {
         try {
-            return await this.workbenchPage!.getResponseCount();
+            return await this.context.workbenchPage!.getResponseCount();
         } catch (error) {
             console.error(`✗ Could not get response count from orchestrator: ${error}`);
             return 0;
@@ -228,10 +215,10 @@ export class WorkbenchOrchestrator {
     async waitAndDebugResponses(expectedCount: number = 5): Promise<void> {
         const ready = await this.waitForAllResponses(expectedCount);
         if (ready) {
-            await this.workbenchPage!.debugLogResponses();
+            await this.context.workbenchPage!.debugLogResponses();
         } else {
             console.log('⚠ Not all responses loaded, logging what we have:');
-            await this.workbenchPage!.debugLogResponses();
+            await this.context.workbenchPage!.debugLogResponses();
         }
     }
 
@@ -240,7 +227,7 @@ export class WorkbenchOrchestrator {
      */
     async areAllResponsesMarked(): Promise<boolean> {
         try {
-            return await this.workbenchPage!.allResponsesMarked();
+            return await this.context.workbenchPage!.allResponsesMarked();
         } catch (error) {
             console.error(`✗ Error checking response marks: ${error}`);
             return false;
@@ -252,7 +239,7 @@ export class WorkbenchOrchestrator {
      */
     async takeWorkbenchScreenshot(name: string): Promise<void> {
         try {
-            await this.browser.takeScreenshot(name);
+            await this.context.browser.takeScreenshot(name);
         } catch (error) {
             console.error(`✗ Failed to take screenshot: ${error}`);
         }
@@ -263,7 +250,7 @@ export class WorkbenchOrchestrator {
      */
     async dumpWorkbenchHTML(filename: string): Promise<void> {
         try {
-            const page = this.browser.getPage();
+            const page = this.context.browser.getPage();
             const html = await page.content();
             const fs = require('fs');
             fs.writeFileSync(`./screenshots/${filename}.html`, html);
@@ -285,7 +272,7 @@ export class WorkbenchOrchestrator {
         console.log('\n✊ Testing prompt on frontier models...');
 
         try {
-            const page = this.browser.getPage();
+            const page = this.context.browser.getPage();
 
             const selectors = [
                 'button:has-text("Test on Frontier Models")'
@@ -323,7 +310,7 @@ export class WorkbenchOrchestrator {
 
             console.log('✓ Clicked "Test on Frontier Models" button');
 
-            await this.browser.waitForTimeout(2000);
+            await this.context.browser.waitForTimeout(2000);
 
             // ✅ IMPORTANT FIX
             const responsesLoaded = await this.waitForFrontierResponses(
@@ -352,7 +339,7 @@ export class WorkbenchOrchestrator {
         console.log(`🚀 Waiting for Frontier responses (expected: ${expectedFrontierResponses})`);
 
         // Step 1: Get existing response count
-        const beforeCount = await this.workbenchPage!.getResponseCount();
+        const beforeCount = await this.context.workbenchPage!.getResponseCount();
         console.log(`📊 Existing responses before generation: ${beforeCount}`);
 
         // Step 2: Wait for loader to disappear
@@ -385,7 +372,7 @@ export class WorkbenchOrchestrator {
             }
 
             // Step 5: Capture screenshot
-            await this.browser.takeScreenshot("07_frontier_responses_loaded");
+            await this.context.browser.takeScreenshot("07_frontier_responses_loaded");
 
             return true;
         }
@@ -396,7 +383,7 @@ export class WorkbenchOrchestrator {
         console.log("📋 Logging available responses for debugging...");
         await this.getAllFrontierResponses();
 
-        await this.browser.takeScreenshot("07_frontier_responses_timeout");
+        await this.context.browser.takeScreenshot("07_frontier_responses_timeout");
 
         return false;
     }
@@ -408,7 +395,7 @@ export class WorkbenchOrchestrator {
     async getAllFrontierResponses(): Promise<string[]> {
         try {
             console.log('📖 Retrieving all frontier model responses...');
-            const responses = await this.workbenchPage!.getAllResponseTexts();
+            const responses = await this.context.workbenchPage!.getAllResponseTexts();
             const response = this.getAllResponses(); // reuse existing method which already logs responses
             console.log(`✓ Retrieved ${responses.length} frontier responses:`);
             responses.forEach((text, index) => {
@@ -426,7 +413,7 @@ export class WorkbenchOrchestrator {
      */
     async isFrontierButtonEnabled(): Promise<boolean> {
         try {
-            const page = this.browser.getPage();
+            const page = this.context.browser.getPage();
 
             // Try multiple selectors with timeout
             const selectors = [
@@ -473,7 +460,7 @@ export class WorkbenchOrchestrator {
                     console.log(`✓ Frontier button is now enabled (${duration}ms)\n`);
                     return true;
                 }
-                await this.browser.waitForTimeout(pollInterval);
+                await this.context.browser.waitForTimeout(pollInterval);
             }
 
             console.log(`⚠ Frontier button not enabled after ${maxWaitTime}ms`);
