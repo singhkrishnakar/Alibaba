@@ -17,11 +17,6 @@ test('authenticate users', async () => {
       'https://llmtoolkit-staging.innodata.com'
     );
 
-    // await browser.getContext().storageState({
-    //   path: `playwright/.auth/user${i}.json`
-    // });
-
-
     await browser.getContext().storageState({
       path: 'playwright/.auth/user.json'
     });

@@ -8,11 +8,9 @@ export class AutomationOrchestrator {
     private context: TestContext
     private config: AutomationConfig
 
-    constructor(config?: AutomationConfig) {
-
-        this.config = config || getConfig()
-        this.context = new TestContext(this.config)
-
+    constructor(context: TestContext) {
+        this.context = context
+        this.config = context.config
     }
 
     async run(testData: PromptTestData): Promise<void> {

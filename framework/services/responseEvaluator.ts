@@ -1,5 +1,5 @@
 // Response Evaluator - Marks responses as Correct/Incorrect
-import { BrowserManager } from './framework/browser/browserManager';
+import { BrowserManager } from '../../framework/browser/browserManager';
 
 export class ResponseEvaluator {
     constructor(private browser: BrowserManager) {}

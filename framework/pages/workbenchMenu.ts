@@ -108,4 +108,17 @@ export class WorkbenchMenu extends BasePage {
 
     }
 
+    async waitForLoader() { 
+        console.log('⏳ Waiting for workbench to load...')
+        try {
+            await this.page().locator('text=Loading...').waitFor({
+                state: 'hidden',
+                timeout: 15000
+            })
+            console.log('✓ Workbench loaded')
+        } catch {
+            console.log('⚠ Loading indicator not found or still visible after timeout')
+        }
+    }
+
 }

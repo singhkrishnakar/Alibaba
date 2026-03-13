@@ -2,16 +2,14 @@ import { test as base } from "@playwright/test";
 import { BrowserManager } from "../browser/browserManager";
 import { AutomationConfig, getConfig } from "../../config/config";
 import { TestContext } from "../core/TestContext";
-import { AutomationOrchestrator } from "../orchestrators/alibabaPromptOrchestrator";
 
 type Fixtures = {
-  config: AutomationConfig;
   testContext: TestContext;
-  orchestrator: AutomationOrchestrator;
+  config: AutomationConfig;
 };
 
 export const test = base.extend<Fixtures>({
-
+  
   config: async ({}, use) => {
     const config = getConfig();
     await use(config);
@@ -29,13 +27,6 @@ export const test = base.extend<Fixtures>({
 
     await browserManager.close();
   },
-
-  orchestrator: async ({ testContext }, use) => {
-
-    const orchestrator = new AutomationOrchestrator(testContext);
-
-    await use(orchestrator);
-  }
 
 });
 

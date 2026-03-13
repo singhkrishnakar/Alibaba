@@ -252,4 +252,7 @@ export class WorkbenchPage extends BasePage {
 
     }
 
+    async getQuestionText(): Promise<string> {
+        throw new Error('Method not implemented.')
+    }
 }

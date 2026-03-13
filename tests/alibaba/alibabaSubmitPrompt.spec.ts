@@ -1,17 +1,15 @@
-import { test } from '@playwright/test';
+import { test } from '../../framework/fixtures/alibaba.fixture';
 import { AutomationOrchestrator } from '../../framework/orchestrators/alibabaPromptOrchestrator';
 import { promptData } from '../../data/promptData';
-import { getConfig } from '../../config/config';
 
 for (const [index, data] of promptData.entries()) {
 
-  test(`LLM Prompt ${index + 1}`, async () => {
+  test.only(`LLM Prompt ${index + 1}`, async ({ testContext  }) => {
 
-    const config = getConfig();
-    const orchestrator = new AutomationOrchestrator(config);
+    const orchestrator = new AutomationOrchestrator(testContext);
 
     await orchestrator.run(data);
 
   });
 
-};
+}

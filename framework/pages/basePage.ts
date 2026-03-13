@@ -19,13 +19,17 @@ export abstract class BasePage {
   protected async waitForSelector(selector: string, timeout = 10000) {
     await this.page().waitForSelector(selector, { timeout })
   }
-  
+
   protected async waitForNavigation(timeout = 5000) {
     return this.browser.waitForNavigation(timeout)
   }
 
   protected async waitForTimeout(ms: number) {
     await this.page().waitForTimeout(ms)
+  }
+
+  protected async waitForVisible(selector: string, timeout = 10000) {
+    return this.page().waitForSelector(selector, { state: 'visible', timeout })
   }
 
   protected async waitForLoader(selector: string = '.loader-container') {
