@@ -1,33 +1,37 @@
-import { test as base } from "@playwright/test";
-import { BrowserManager } from "../browser/browserManager";
-import { AutomationConfig, getConfig } from "../../config/config";
-import { TestContext } from "../core/TestContext";
+import { test as base } from "@playwright/test"
+import { BrowserManager } from "../browser/browserManager"
+import { TestContext } from "../core/TestContext"
+import { getConfig } from "../../config/config"
+import * as fs from "fs"
 
 type Fixtures = {
-  testContext: TestContext;
-  config: AutomationConfig;
-};
+  testContext: TestContext
+}
 
 export const test = base.extend<Fixtures>({
-  
-  config: async ({}, use) => {
-    const config = getConfig();
-    await use(config);
-  },
 
-  testContext: async ({ config }, use) => {
+  testContext: async ({ browser }, use) => {
+    const config = getConfig()
 
-    const browserManager = new BrowserManager(config.screenshotDir);
+    // Make sure session file exists
+    const storagePath = 'playwright/.auth/user.json'
+    if (!fs.existsSync(storagePath)) {
+      throw new Error('⚠️ Session file not found. Run auth.setup.ts first!')
+    }
 
-    await browserManager.launch(config.headless);
+    // Create a new browser context with the saved session
+    const context = await browser.newContext({ storageState: storagePath })
+    const page = await context.newPage()
 
-    const context = new TestContext(config, browserManager);
+    const browserManager = new BrowserManager(page, config.screenshotDir)
+    const ctx = new TestContext(config, browserManager)
 
-    await use(context);
+    await use(ctx)
 
-    await browserManager.close();
-  },
+    // Optionally close context after tests
+    await context.close()
+  }
 
-});
+})
 
-export { expect } from "@playwright/test";
+export { expect } from "@playwright/test"

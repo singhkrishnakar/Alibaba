@@ -25,8 +25,16 @@ export class TestContext {
     browser: BrowserManager
 
     constructor(config?: AutomationConfig, browserManager?: BrowserManager) {
+
         this.config = config || getConfig()
-        this.browser = browserManager || new BrowserManager(this.config.screenshotDir)
+
+        if (!browserManager) {
+            throw new Error(
+                "BrowserManager must be provided via Playwright fixture"
+            )
+        }
+
+        this.browser = browserManager
     }
 
     // ---------- AUTH ----------

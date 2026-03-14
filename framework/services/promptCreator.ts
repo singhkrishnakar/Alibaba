@@ -10,7 +10,7 @@ export class PromptCreator {
         console.log("📝 Creating prompt...");
         const startTime = Date.now();
 
-        
+
         try {
 
             // Ensure prompt type is selected (e.g., "essay")
@@ -171,8 +171,12 @@ export class PromptCreator {
             );
 
             if (runClicked) {
+
+                const page = this.browser.getPage();
+                await page.waitForLoadState("domcontentloaded");
+                await page.waitForTimeout(500);
                 // Wait for results to load
-                await this.browser.waitForNavigation(10000);
+                //await this.browser.waitForNavigation(10000);
                 await this.browser.waitForTimeout(500);
                 const duration = Date.now() - startTime;
                 console.log(`✓ Prompt executed (${duration}ms)`);

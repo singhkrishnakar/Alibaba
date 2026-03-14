@@ -206,7 +206,11 @@ export class FormHandler {
                 return false;
             }
 
+            // Old
             await this.browser.waitForTimeout(800);
+
+            // Better
+            //await page.locator('selector-of-element-after-wait').waitFor({ state: 'visible', timeout: 5000 });
 
             // Click ADD
             const addClicked = await this.browser.click(
@@ -222,18 +226,21 @@ export class FormHandler {
             await this.browser.waitForTimeout(600);
 
             // Fill knowledge point
-            let filled = await this.browser.fill(
-                'input[placeholder*="Knowledge" i]',
-                customText,
-                2000
-            );
+            // let filled = await this.browser.fill(
+            //     'input[placeholder*="Knowledge" i]',
+            //     customText,
+            //     2000
+            // );
 
-            if (!filled) {
-                filled =
-                    await this.browser.fillByLabel('Knowledge Point', customText, 2000) ||
-                    await this.browser.fillByLabel('Custom', customText, 2000);
-            }
+            // if (!filled) {
+            //     filled =
+            //         await this.browser.fillByLabel('Knowledge Point', customText, 2000) ||
+            //         await this.browser.fillByLabel('Custom', customText, 2000);
+            // }
 
+            const filled =
+                await this.browser.fillByLabel('Knowledge Point', customText, 2000) ||
+                await this.browser.fillByLabel('Custom', customText, 2000);
             if (!filled) {
                 console.log('⚠ Could not fill Knowledge Point input');
                 return false;

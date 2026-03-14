@@ -25,7 +25,7 @@ export class AutomationOrchestrator {
 
             Logger.info("Opening browser and validating session...")
 
-            await ctx.browser.start(this.config.headless, true)
+            //await ctx.browser.start(this.config.headless, true)
 
             const valid = await ctx.sessionValidator.validateSession(
                 this.config.project.baseUrl
@@ -67,7 +67,7 @@ export class AutomationOrchestrator {
 
             console.error(`\n❌ Automation failed after ${totalDuration}s\n`)
 
-            await this.context.browser.close()
+            //await this.context.browser.close()
 
             throw error
 
