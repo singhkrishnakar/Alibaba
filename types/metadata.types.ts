@@ -5,7 +5,7 @@ export interface MetadataConfig {
     thinkingProcess: string;
     answerUnit: string;
     noUnitRequired: boolean;
-    customKnowledgePoint: string;
+    knowledgePoints: string[];
     discipline: string;
     level: string;
 }

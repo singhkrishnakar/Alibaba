@@ -3,8 +3,11 @@
 import { Page } from 'playwright';
 import { AutomationConfig } from '../../config/config';
 import { TestContext } from '../core/TestContext';
-import { PromptTestData } from '../../data/promptData';
-
+import { PromptTestData } from '../../types/testData.type';
+import { Logger } from '../utils/Logger';
+import { ProjectDetailPage } from '../pages/projectDetailPage';
+import { ExportPromptOrchestrator } from './exportPromptOrchestrator';
+import { ExpectedPromptFields } from '../../data/expectedPromptFields';
 export class WorkbenchOrchestrator {
     private context: TestContext
 

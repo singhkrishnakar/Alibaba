@@ -1,6 +1,6 @@
 // Prompt Creator - Creates and runs prompts
 import { BrowserManager } from '../browser/browserManager';
-import { PromptTestData } from '../../data/promptData';
+import { PromptTestData } from '../../types/testData.type';
 
 export class PromptCreator {
     constructor(private browser: BrowserManager) { }

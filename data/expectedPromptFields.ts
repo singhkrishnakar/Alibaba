@@ -4,7 +4,7 @@ export interface ExpectedPromptFields {
   solution_process: string
   thinking_process: string
   final_answer: string
-  knowledge_points: string
+  knowledge_points: string[]
   level: string
   discipline: string
 }

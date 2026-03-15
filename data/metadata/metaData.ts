@@ -9,9 +9,9 @@ export const metadata: Record<string, MetadataConfig> = {
         thinkingProcess: "Logical reasoning applied",
         answerUnit: "N/A",
         noUnitRequired: false,
-        customKnowledgePoint: "Physics",
+        knowledgePoints: ["Physics"],   // ✅ changed
         level: "Undergraduate",
         discipline: "Organic Chemistry"
     }
 
-};
+}

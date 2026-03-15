@@ -6,11 +6,12 @@ import { AutomationConfig } from '../../config/config';
 export class ExportPromptOrchestrator {
 
     private context: TestContext
-        private config: AutomationConfig
-    
-        constructor(context: TestContext) {
-            this.context = context
-            this.config = context.config}
+    private config: AutomationConfig
+
+    constructor(context: TestContext) {
+        this.context = context
+        this.config = context.config
+    }
 
     async run(testData: PromptTestData): Promise<void> {
 
@@ -61,13 +62,20 @@ export class ExportPromptOrchestrator {
 
             Logger.info(`Automation completed in ${duration}s`)
 
-            await ctx.projectDetailPage.verifyPromptFields(filePath, {
+            const prompt = await ctx.projectDetailPage.getPromptFromExport(
+                filePath,
+                testData.prompt.promptText
+            )
+
+            Logger.info("Verifying exported prompt fields for prompt: " + testData.prompt.promptText)
+
+            await ctx.projectDetailPage.verifyPromptFields(prompt, {
                 question_type: testData.metadata.questionType,
                 input_text: testData.prompt.promptText,
                 solution_process: testData.metadata.solutionProcess,
                 thinking_process: testData.metadata.thinkingProcess,
                 final_answer: testData.metadata.finalAnswer,
-                knowledge_points: testData.metadata.customKnowledgePoint,
+                knowledge_points: testData.metadata.knowledgePoints,
                 level: testData.metadata.level,
                 discipline: testData.metadata.discipline
             })

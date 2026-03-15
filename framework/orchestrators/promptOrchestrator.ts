@@ -1,9 +1,9 @@
-import { PromptTestData } from "../../data/promptData";
 import { PromptCreator } from "../services/promptCreator";
 import { ResponseEvaluator } from "../services/responseEvaluator";
 import { WorkbenchOrchestrator } from "./workbenchOrchestrator";
 import { AutomationConfig, PromptConfig } from "../../config/config";
 import { TestContext } from "../core/TestContext";
+import { PromptTestData } from "../../types/testData.type";
 
 export class PromptOrchestrator {
 

@@ -6,7 +6,7 @@ import { promptData } from "../../data/prompts/promptData"
 
 for (const [index, data] of promptData.entries()) {
 
-  test.only(`LLM Prompt ${index + 1}`, async ({ testContext  }) => {
+  test(`LLM Prompt ${index + 1}`, async ({ testContext  }) => {
 
     const orchestrator = new AutomationOrchestrator(testContext);
 
