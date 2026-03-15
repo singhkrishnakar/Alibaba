@@ -1,98 +1,82 @@
-// Main orchestrator
-import { BrowserManager } from '../browser/browserManager';
-import { Authenticator } from '../auth/authenticator';
-import { ProjectSelector } from '../services/projectSelector';
-import { WorkbenchMenu } from '../pages/workbenchMenu';
-import { PromptCreator } from '../services/promptCreator';
-import { ResponseEvaluator } from '../services/responseEvaluator';
-import { WorkbenchOrchestrator } from './workbenchOrchestrator';
-import { FormHandler, MetadataConfig } from '../services/formHandler';
-import { getConfig, AutomationConfig } from '../../config/config';
-import { PromptTestData, promptData } from "../../data/promptData";
-import { PromptConfig } from '../../types/prompt.types';
-import test from 'node:test';
-import { Logger } from '../utils/logger';
-import { SessionValidator } from '../auth/sessionManager';
-import { NavigationService } from '../services/navigationService';
-import { PromptOrchestrator } from './promptOrchestrator';
-import { ReviewOrchestrator } from './reviewOrchestrator';
 import { TestContext } from '../core/TestContext';
+import { PromptTestData } from "../../types/testData.type";
+import { Logger } from '../utils/Logger';
+import { AutomationConfig } from '../../config/config';
 
-export class AutomationOrchestrator {
-    
+export class ExportPromptOrchestrator {
+
     private context: TestContext
+        private config: AutomationConfig
     
         constructor(context: TestContext) {
             this.context = context
-        }
+            this.config = context.config}
 
     async run(testData: PromptTestData): Promise<void> {
-        console.log('\n⏱️  Starting LLM Toolkit Automation...\n');
-        const totalStart = Date.now();
+
+        const ctx = this.context
+        const config = ctx.config
+
+        Logger.info("⏱️ Starting LLM Export Automation")
+
+        const start = Date.now()
 
         try {
 
+            Logger.info("Validating session")
 
-            // Launch browser with saved session
-            Logger.info("Opening browser and validating session...");
-            await this.context.browser.start(this.context.config.headless, true);
+            const valid = await ctx.sessionValidator.validateSession(
+                config.project.baseUrl
+            )
 
-            const valid = await this.context.sessionValidator.validateSession(
-                this.context.config.project.baseUrl
-            );
             if (!valid) {
-                throw new Error("Session expired. Run auth.setup.ts again");
+                throw new Error("Session expired. Run auth.setup.ts again")
             }
 
-            await this.context.workbenchOrchestrator.initialize();
-            // Validate session
-            // Step 1: Open dashboard to ensure we're logged in and session is valid
-            Logger.info("Opening dashboard...");
-            await this.context.navigationService.openDashboard(this.context.config.project.baseUrl);
+            Logger.info("Opening dashboard")
 
-            // STEP 2: Navigate to project
+            await ctx.navigationService.openDashboard(
+                config.project.baseUrl
+            )
 
-            await this.context.projectSelector.navigateToProject(
-                this.context.config.project.projectName,
-                this.context.config.project.baseUrl,
-                this.context.config.project.projectUrl
-            );
+            Logger.info("Navigating to project")
 
-            await this.context.workbenchMenu.waitForLoader();
+            await ctx.projectSelector.navigateToProject(
+                config.project.projectName,
+                config.project.baseUrl,
+                config.project.projectUrl
+            )
 
-            // STEP 3: Launch workbench
+            Logger.info("Waiting for project page")
 
-            await this.context.workbenchMenu.launch();
+            await ctx.projectDetailPage.waitForPageLoad()
 
-            //Step 5: Create prompt (abort if failure)
-           await this.context.promptOrchestrator.createPrompt(testData.prompt);
-            await this.context.browser.takeScreenshot('07_responses_marked_specific');
+            Logger.info("Exporting prompts")
 
-            // Step 7.5: Wait for frontier button to be enabled
-            await this.context.promptOrchestrator.handleResponses(testData);
+            const filePath = await ctx.projectDetailPage.exportPrompts('json')
 
-            // Step 8: Click Submit to open "Review and Submit models" form
+            await ctx.projectDetailPage.verifyExport(filePath)
 
-            // // Step 9: Fill metadata (Final Answer, Solution Process, Thinking Process, Answer Unit)
+            const duration = ((Date.now() - start) / 1000).toFixed(1)
 
-            await this.context.reviewOrchestrator.submitReview(testData.metadata);
+            Logger.info(`Automation completed in ${duration}s`)
 
-            const totalDuration = ((Date.now() - totalStart) / 1000).toFixed(1);
-            console.log(`\n✅ Automation completed successfully in ${totalDuration}s\n`);
-            console.log('🔍 Browser window remains open for analysis... (not closed automatically)');
+            await ctx.projectDetailPage.verifyPromptFields(filePath, {
+                question_type: testData.metadata.questionType,
+                input_text: testData.prompt.promptText,
+                solution_process: testData.metadata.solutionProcess,
+                thinking_process: testData.metadata.thinkingProcess,
+                final_answer: testData.metadata.finalAnswer,
+                knowledge_points: testData.metadata.customKnowledgePoint,
+                level: testData.metadata.level,
+                discipline: testData.metadata.discipline
+            })
+
         } catch (error) {
-            const totalDuration = ((Date.now() - totalStart) / 1000).toFixed(1);
-            console.error(`\n❌ Automation failed after ${totalDuration}s\n`);
-            try {
-                await this.context.browser.close();
-            } catch (closeErr) {
-                console.error(`  ⚠ Failed to close browser: ${closeErr}`);
-            }
-            throw error;
-        } finally {
-            // on success: browser left open for inspection; on failure: closed in catch
+
+            Logger.error("Automation failed")
+
+            throw error
         }
     }
-
-
 }

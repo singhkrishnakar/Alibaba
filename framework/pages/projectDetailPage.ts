@@ -1,86 +1,69 @@
-import { Locator } from 'playwright';
+import { Locator } from '@playwright/test';
 import { BasePage } from './basePage';
 import { TestContext } from '../core/TestContext';
+import { Logger } from '../utils/Logger';
+import * as fs from "fs/promises"
+import path from "path"
+import { ExpectedPromptFields } from '../../data/expectedPromptFields';
 
 export class ProjectDetailPage extends BasePage {
 
-    private context: TestContext;
-
-    constructor(context: TestContext) {
-        super(context.browser);
-        this.context = context;
+    constructor(private context: TestContext) {
+        super(context.browser)
     }
 
-    // =========================
     // HEADER
-    // =========================
 
     get projectTitle(): Locator {
-        return this.page().locator('h1');
+        return this.page().locator('h1')
     }
 
     get projectStatus(): Locator {
-        return this.page().locator('.chip1');
+        return this.page().locator('.chip1')
     }
 
-    // =========================
-    // USER MENU (3 dots)
-    // =========================
+    // MENU
 
     get moreOptionsButton(): Locator {
-        return this.page().locator('button:has(svg[data-testid="MoreVertIcon"])');
+        return this.page().locator('[data-testid="MoreVertIcon"]')
     }
 
     get launchWorkbenchOption(): Locator {
-        return this.page().locator('text=Launch Workbench');
+        return this.page().getByText('Launch Workbench')
     }
 
     get projectSettingsOption(): Locator {
-        return this.page().locator('text=Project Settings');
+        return this.page().getByText('Project Settings')
     }
 
-    // =========================
-    // PROMPT TABLE
-    // =========================
+    // TABLE
 
     get promptsTable(): Locator {
-        return this.page().locator('table');
+        return this.page().locator('table')
     }
 
     get promptRows(): Locator {
-        return this.page().locator('tbody tr');
+        return this.page().locator('tbody tr')
     }
 
-    get promptIdColumn(): Locator {
-        return this.page().locator('tbody tr td:nth-child(1)');
+    get exportButton(): Locator {
+        return this.page().locator('.export-dropdown-btn')
     }
 
-    get promptTextColumn(): Locator {
-        return this.page().locator('tbody tr td:nth-child(4)');
-    }
-
-    // =========================
     // SEARCH
-    // =========================
 
     get searchInput(): Locator {
-        return this.page().locator('input[placeholder="Search..."]');
+        return this.page().locator('input[placeholder="Search..."]')
     }
 
-    // =========================
     // PAGINATION
-    // =========================
 
     get nextPageButton(): Locator {
-        return this.page().locator('[data-testid="ChevronRightIcon"]');
+        return this.page().locator('[data-testid="ChevronRightIcon"]')
     }
 
     get prevPageButton(): Locator {
-        return this.page().locator('[data-testid="ChevronLeftIcon"]');
-    }
-
-    get resultsCount(): Locator {
-        return this.page().locator('text=/\\d+-\\d+ of \\d+/');
+        return this.page().locator('[data-testid="ChevronLeftIcon"]')
     }
 
     // =========================
@@ -88,44 +71,120 @@ export class ProjectDetailPage extends BasePage {
     // =========================
 
     async waitForPageLoad() {
-        await this.waitForVisible('h1');
-    }
-
-    async getProjectTitle(): Promise<string> {
-        return (await this.projectTitle.textContent())?.trim() || '';
+        await this.projectTitle.waitFor({ state: 'visible' })
     }
 
     async searchPrompt(text: string) {
-        await this.searchInput.fill(text);
-        await this.page().keyboard.press('Enter');
-        await this.waitForLoader();
+
+        await this.searchInput.fill(text)
+
+        await this.page().keyboard.press('Enter')
+
+        await this.waitForLoader()
     }
 
     async getPromptCount(): Promise<number> {
-        return await this.promptRows.count();
-    }
-
-    async getPromptTextByRow(index: number): Promise<string> {
-        return (
-            await this.page()
-                .locator(`tbody tr:nth-child(${index + 1}) td:nth-child(4)`)
-                .textContent()
-        )?.trim() || '';
+        return await this.promptRows.count()
     }
 
     async launchWorkbench() {
-        console.log('🚀 Launching Workbench');
 
-        await this.moreOptionsButton.click();
-        await this.launchWorkbenchOption.waitFor({ state: 'visible' });
-        await this.launchWorkbenchOption.click();
+        await this.moreOptionsButton.click()
 
-        await this.page().waitForLoadState('domcontentloaded');
+        await this.launchWorkbenchOption.waitFor({ state: 'visible' })
+
+        await this.launchWorkbenchOption.click()
+
+        await this.page().waitForLoadState('domcontentloaded')
     }
 
-    async goToNextPage() {
-        await this.nextPageButton.click();
-        await this.waitForLoader();
+    async exportPrompts(type: 'json' | 'csv'): Promise<string> {
+
+        const page = this.page()
+
+        await page.locator('.export-dropdown-btn').click()
+
+        const optionText =
+            type === 'json'
+                ? 'Download as JSON'
+                : 'Download as CSV'
+
+        const option = page.getByText(optionText)
+
+        await option.waitFor({ state: 'visible' })
+
+        const [download] = await Promise.all([
+            page.waitForEvent('download'),
+            option.click()
+        ])
+
+        const fileName = download.suggestedFilename()
+
+        const filePath = path.join(
+            this.context.fileManager.downloadDir,
+            fileName
+        )
+
+        await download.saveAs(filePath)
+
+        return filePath
+    }
+    //verify if export was successful by checking the file exists in the download directory
+
+    async verifyExport(filePath: string): Promise<void> {
+
+        try {
+            await fs.access(filePath)
+            Logger.success(`Export verified: ${filePath}`)
+        } catch {
+            throw new Error(`Export file not found: ${filePath}`)
+        }
     }
 
+
+    async verifyPromptFields(
+        filePath: string,
+        expected: ExpectedPromptFields
+    ): Promise<void> {
+
+        const fileContent = await fs.readFile(filePath, "utf-8")
+        const prompts = JSON.parse(fileContent)
+
+        if (!Array.isArray(prompts)) {
+            throw new Error("Exported JSON is not an array")
+        }
+
+        // find prompt based on unique field
+        const prompt = prompts.find(
+            (p: any) => p.input_text === expected.input_text
+        )
+
+        if (!prompt) {
+            throw new Error(`Prompt not found in export: ${expected.input_text}`)
+        }
+
+        // validations
+        if (prompt.question_type !== expected.question_type)
+            throw new Error(`question_type mismatch`)
+
+        if (prompt.solution_process !== expected.solution_process)
+            throw new Error(`solution_process mismatch`)
+
+        if (prompt.thinking_process !== expected.thinking_process)
+            throw new Error(`thinking_process mismatch`)
+
+        if (prompt.final_answer !== expected.final_answer)
+            throw new Error(`final_answer mismatch`)
+
+        if (JSON.stringify(prompt.knowledge_points) !== JSON.stringify(expected.knowledge_points))
+            throw new Error(`knowledge_points mismatch`)
+
+        if (prompt.level?.name !== expected.level)
+            throw new Error(`level mismatch`)
+
+        if (prompt.discipline?.name !== expected.discipline)
+            throw new Error(`discipline mismatch`)
+
+        console.log("✅ Prompt fields verified successfully")
+    }
 }

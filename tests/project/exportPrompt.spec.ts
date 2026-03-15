@@ -1,7 +1,12 @@
-import { test } from "../../framework/fixtures/projectDetail.fixture"
+import { test } from "../../framework/fixtures/projectDetail.fixture";
+import { ExportPromptOrchestrator } from "../../framework/orchestrators/exportPromptOrchestrator";
+import { PromptTestData } from "../../types/testData.type"
+import { promptData } from "../../data/prompts/promptData"
 
-test("something", async ({ context }) => {
+test("Export Prompt", async ({ testContext }) => {
 
-   await context.someOrchestrator.doSomething()
+    const orchestrator = new ExportPromptOrchestrator(testContext);
 
-})
+    await orchestrator.run(promptData[0]);
+
+});

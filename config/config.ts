@@ -26,6 +26,7 @@ export interface AutomationConfig {
 }
 
 export const getConfig = (): AutomationConfig => ({
+   
     credentials: {
         email: 'pzr@innodata.com',
         password: 'Password@2029'

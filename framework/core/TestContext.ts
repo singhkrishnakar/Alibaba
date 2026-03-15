@@ -19,14 +19,17 @@ import { ProjectSelector } from "../services/projectSelector";
 import { PromptCreator } from "../services/promptCreator";
 import { ResponseEvaluator } from "../services/responseEvaluator";
 
+import {fileManager} from "../../config/fileManager"
 export class TestContext {
 
     config: AutomationConfig
     browser: BrowserManager
+    fileManager: typeof fileManager
 
     constructor(config?: AutomationConfig, browserManager?: BrowserManager) {
 
         this.config = config || getConfig()
+        this.fileManager = fileManager
 
         if (!browserManager) {
             throw new Error(

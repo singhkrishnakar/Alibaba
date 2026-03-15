@@ -86,7 +86,7 @@ export class FormHandler {
                 const success = await this.addKnowledgePoint(metadata.customKnowledgePoint);
 
                 if (!success) {
-                    console.log('⚠ Knowledge point not added, continuing...');
+                    throw new Error('❌ Mandatory field "Knowledge Point" not filled');
                 }
 
                 await this.browser.takeScreenshot('15_custom_knowledge_point_added');
@@ -192,90 +192,87 @@ export class FormHandler {
  * Add custom Knowledge Point: Enter key point -> ADD -> enter text -> Save
  */
     async addKnowledgePoint(customText: string): Promise<boolean> {
+        const page = this.browser.getPage();
+
+        console.log('📌 Adding custom Knowledge Point...');
+
         try {
-            console.log('📌 Adding custom Knowledge Point...');
 
-            // Open "Enter key point"
-            const enterKeyPointClicked = await this.browser.click(
-                'span:has-text("Enter key point")',
-                2000
-            );
+            // STEP 1 — Open key point dropdown
+            const enterKeyPoint = page.locator('span:has-text("Enter key point")');
 
-            if (!enterKeyPointClicked) {
-                console.log('⚠ "Enter key point" control not found');
-                return false;
+            await enterKeyPoint.waitFor({ state: 'visible', timeout: 5000 });
+            await enterKeyPoint.click();
+
+            console.log('  ✓ Opened "Enter key point"');
+
+            // STEP 2 — Click ADD
+            const addButton = page.locator('button:has-text("Add")');
+
+            await addButton.waitFor({ state: 'visible', timeout: 5000 });
+            await addButton.click();
+
+            console.log('  ✓ Clicked ADD');
+
+            // STEP 3 — Wait for dialog/input
+            const input = page.locator(
+                'input[placeholder*="Knowledge" i], input[name*="knowledge" i]'
+            ).first();
+
+            await input.waitFor({ state: 'visible', timeout: 5000 });
+
+            // STEP 4 — Fill value
+            await input.fill(customText);
+
+            console.log(`  ✓ Knowledge point text entered: ${customText}`);
+
+            // STEP 5 — Save
+            const saveButton = page
+                .locator('[role="dialog"]')
+                .locator('button:has-text("Save"):not(:has-text("Draft"))')
+                .first();
+
+            if (await saveButton.isVisible({ timeout: 3000 })) {
+
+                await saveButton.click();
+
+                console.log('  ✓ Clicked Save');
+
+            } else {
+
+                await input.press('Enter');
+
+                console.log('  ✓ Confirmed with Enter');
             }
 
-            // Old
-            await this.browser.waitForTimeout(800);
-
-            // Better
-            //await page.locator('selector-of-element-after-wait').waitFor({ state: 'visible', timeout: 5000 });
-
-            // Click ADD
-            const addClicked = await this.browser.click(
-                'button:has-text("Add")',
-                2000
-            );
-
-            if (!addClicked) {
-                console.log('⚠ ADD option not found in dropdown');
-                return false;
-            }
-
-            await this.browser.waitForTimeout(600);
-
-            // Fill knowledge point
-            // let filled = await this.browser.fill(
-            //     'input[placeholder*="Knowledge" i]',
-            //     customText,
-            //     2000
-            // );
-
-            // if (!filled) {
-            //     filled =
-            //         await this.browser.fillByLabel('Knowledge Point', customText, 2000) ||
-            //         await this.browser.fillByLabel('Custom', customText, 2000);
-            // }
-
-            const filled =
-                await this.browser.fillByLabel('Knowledge Point', customText, 2000) ||
-                await this.browser.fillByLabel('Custom', customText, 2000);
-            if (!filled) {
-                console.log('⚠ Could not fill Knowledge Point input');
-                return false;
-            }
-
-            await this.browser.waitForTimeout(500);
-
-            // Try clicking Save
-            let saveClicked = await this.browser.click(
-                '[role="dialog"] button:has-text("Save")||button:has-text("Save")',
-                1500
-            );
-
-            // If Save button not present, confirm using Enter
-            if (!saveClicked) {
-                await this.browser.pressKey('Enter');
-                console.log('✓ Confirmed knowledge point with Enter');
-            }
-
-            await this.browser.waitForTimeout(800);
-
-            // Close dropdown by clicking outside
-            const page = this.browser.getPage();
-            await page.mouse.click(10, 10);   // click top-left outside dropdown
-
-            await this.browser.waitForTimeout(500);
-
-            console.log('✓ Knowledge point added and dropdown closed');
+            // STEP 6 — Wait for chip/tag to appear (verification)
+            //const createdTag = page.locator(`text=${customText}`);
+            //await this.verifyChip('Key Points', customText);
 
             return true;
 
         } catch (error) {
-            console.error(`✗ Error adding Knowledge Point: ${error}`);
-            return false;
+
+            console.error(`❌ Knowledge Point creation failed: ${error}`);
+
+            throw new Error(
+                `Mandatory field "Knowledge Point" could not be filled`
+            );
         }
+    }
+
+    async verifyChip(fieldLabel: string, text: string) {
+        const page = this.browser.getPage();
+
+        // verify chip
+        const chip = page.locator(
+            'div:has(label:has-text("Key Points")) div:has(button.remove-btn)',
+            { hasText: text }
+        );
+
+        await chip.waitFor({ state: 'visible', timeout: 8000 });
+
+        console.log(`✓ Knowledge point added successfully`);
     }
 
     /**

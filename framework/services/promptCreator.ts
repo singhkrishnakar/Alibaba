@@ -1,11 +1,11 @@
 // Prompt Creator - Creates and runs prompts
 import { BrowserManager } from '../browser/browserManager';
-import { PromptConfig } from '../../config/config';
+import { PromptTestData } from '../../data/promptData';
 
 export class PromptCreator {
     constructor(private browser: BrowserManager) { }
 
-    async createPrompt(config: PromptConfig, abortOnFailure = true): Promise<boolean> {
+    async createPrompt(testData: PromptTestData, abortOnFailure = true): Promise<boolean> {
 
         console.log("📝 Creating prompt...");
         const startTime = Date.now();
@@ -14,13 +14,13 @@ export class PromptCreator {
         try {
 
             // Ensure prompt type is selected (e.g., "essay")
-            console.log(`  → Selecting prompt type: ${config.promptType}`);
+            console.log(`  → Selecting prompt type: ${testData.metadata.questionType}`);
             const typeSelected = await this.browser.click(
-                `button:has-text("${config.promptType}")||label:has-text("${config.promptType}")||input[value="${config.promptType}"]||input[type="radio"][value="${config.promptType}"]`,
+                `button:has-text("${testData.metadata.questionType}")||label:has-text("${testData.metadata.questionType}")||input[value="${testData.metadata.questionType}"]||input[type="radio"][value="${testData.metadata.questionType}"]`,
                 1000
             );
             if (!typeSelected) {
-                const msg = `Prompt type selector for "${config.promptType}" not found`;
+                const msg = `Prompt type selector for "${testData.metadata.questionType}" not found`;
                 console.log(`  ⚠ ${msg}`);
                 if (abortOnFailure) throw new Error(msg);
             } else {
@@ -30,7 +30,7 @@ export class PromptCreator {
             // Fill prompt text (try several common selectors)
             console.log('  → Filling prompt text');
 
-            const filled = await this.fillPrompt(config, abortOnFailure);
+            const filled = await this.fillPrompt(testData, abortOnFailure);
 
             if (!filled) {
                 const msg = 'Could not fill prompt text';
@@ -41,23 +41,23 @@ export class PromptCreator {
             const page = this.browser.getPage();
 
             // Set education level - try native select first, then react-select typing, then dropdown click
-            console.log(`  → Setting education level: ${config.educationLevel}`);
+            console.log(`  → Setting education level: ${testData.metadata.level}`);
 
-            const selectEducationLevel = await this.setEducationLevel(config, abortOnFailure);
+            const selectEducationLevel = await this.setEducationLevel(testData, abortOnFailure);
 
             if (!selectEducationLevel) {
-                const msg = `Could not set education level to "${config.educationLevel}"`;
+                const msg = `Could not set education level to "${testData.metadata.level}"`;
                 console.log(`  ⚠ ${msg}`);
                 if (abortOnFailure) throw new Error(msg);
             }
 
             // Fill/Select subject/discipline (use same multi-strategy approach as education level)
-            console.log(`  → Filling subject/discipline: ${config.subject}`);
+            console.log(`  → Filling subject/discipline: ${testData.metadata.discipline}`);
 
-            const selectSubject = await this.setSubject(config, abortOnFailure);
+            const selectSubject = await this.setSubject(testData, abortOnFailure);
 
             if (!selectSubject) {
-                const msg = `Could not set subject to "${config.subject}"`;
+                const msg = `Could not set subject to "${testData.metadata.discipline}"`;
                 console.log(`  ⚠ ${msg}`);
                 if (abortOnFailure) throw new Error(msg);
             }
@@ -83,7 +83,7 @@ export class PromptCreator {
         }
     }
 
-    async fillPrompt(config: PromptConfig, abortOnFailure = true): Promise<boolean> {
+    async fillPrompt(testData: PromptTestData, abortOnFailure = true): Promise<boolean> {
         console.log('📝 Filling prompt...');
         const startTime = Date.now();
         const page = this.browser.getPage();
@@ -94,7 +94,7 @@ export class PromptCreator {
             );
             await promptBox.waitFor({ state: 'visible', timeout: 15000 });
             await promptBox.click();
-            await promptBox.fill(config.promptText);
+            await promptBox.fill(testData.prompt.promptText);
             const duration = Date.now() - startTime;
             console.log(`✓ Prompt filled (${duration}ms)`);
             return true;
@@ -105,8 +105,8 @@ export class PromptCreator {
         }
     }
 
-    async setEducationLevel(config: PromptConfig, abortOnFailure = true): Promise<boolean> {
-        console.log(`  → Setting education level: ${config.educationLevel}`);
+    async setEducationLevel(testData: PromptTestData, abortOnFailure = true): Promise<boolean> {
+        console.log(`  → Setting education level: ${testData.metadata.level}`);
 
         const page = this.browser.getPage();
 
@@ -117,11 +117,11 @@ export class PromptCreator {
 
             await dropdownInput.click();
 
-            await dropdownInput.fill(config.educationLevel);
+            await dropdownInput.fill(testData.metadata.level);
 
-            await page.locator('div[role="option"]', { hasText: config.educationLevel }).click();
+            await page.locator('div[role="option"]', { hasText: testData.metadata.level }).click();
 
-            console.log(`✓ Education level selected: ${config.educationLevel}`);
+            console.log(`✓ Education level selected: ${testData.metadata.level}`);
             return true;
 
         } catch (error) {
@@ -131,25 +131,25 @@ export class PromptCreator {
         }
     }
 
-    async setSubject(config: PromptConfig, abortOnFailure = true): Promise<boolean> {
+    async setSubject(testData: PromptTestData, abortOnFailure = true): Promise<boolean> {
         const page = this.browser.getPage();
         try {
-            console.log(`  → Setting subject: ${config.subject}`);
+            console.log(`  → Setting subject: ${testData.metadata.discipline}`);
 
             // Click into the dropdown input
             const disciplineInput = page.locator('#react-select-dropdown-disciplines-dropdown-input');
             await disciplineInput.click();
-            await disciplineInput.fill(config.subject);
+            await disciplineInput.fill(testData.metadata.discipline);
 
             // Wait a short moment for React Select options to render
             await page.waitForTimeout(300);
 
             // Click the exact matching option
-            const option = page.getByRole('option', { name: config.subject, exact: true });
+            const option = page.getByRole('option', { name: testData.metadata.discipline, exact: true });
             await option.waitFor({ state: 'visible', timeout: 5000 });
             await option.click();
 
-            console.log(`✓ Subject selected: ${config.subject}`);
+            console.log(`✓ Subject selected: ${testData.metadata.discipline}`);
             return true;
         } catch (error) {
             console.error(`⚠ Subject selection error: ${error}`);

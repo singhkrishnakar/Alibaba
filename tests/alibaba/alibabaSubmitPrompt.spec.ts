@@ -1,6 +1,8 @@
 import { test } from '../../framework/fixtures/alibaba.fixture';
 import { AutomationOrchestrator } from '../../framework/orchestrators/alibabaPromptOrchestrator';
-import { promptData } from '../../data/promptData';
+import { PromptTestData } from "../../types/testData.type"
+import { promptData } from "../../data/prompts/promptData"
+
 
 for (const [index, data] of promptData.entries()) {
 

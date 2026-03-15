@@ -1,6 +1,6 @@
 import { AutomationConfig, getConfig } from "../../config/config"
-import { PromptTestData } from "../../data/promptData"
-import { Logger } from "../utils/logger"
+import { PromptTestData } from "../../types/testData.type";
+import { Logger } from "../utils/Logger"
 import { TestContext } from "../core/TestContext"
 
 export class AutomationOrchestrator {
@@ -51,7 +51,7 @@ export class AutomationOrchestrator {
 
             await ctx.workbenchMenu.launch()
 
-            await ctx.promptOrchestrator.createPrompt(testData.prompt)
+            await ctx.promptOrchestrator.createPrompt(testData)
 
             await ctx.promptOrchestrator.handleResponses(testData)
 

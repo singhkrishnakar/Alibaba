@@ -1,15 +1,10 @@
-import { test, expect } from "../../framework/fixtures/projectDetail.fixture";
-import { TestContext } from "../../framework/core/TestContext";
+import { test } from "../../framework/fixtures/projectDetail.fixture";
 import { ProjectDetailOrchestrator } from "../../framework/orchestrators/projectDetailOrchestration";
 
-test("Project prompt validation", async ({ browserManager }) => {
+test("Project prompt validation", async ({ testContext }) => {
 
-    const context = new TestContext(undefined, browserManager);
-    const orchestrator = new ProjectDetailOrchestrator(context);
+    const orchestrator = new ProjectDetailOrchestrator(testContext);
 
-    await orchestrator.verifyProjectLoaded("Alibaba");
-    await orchestrator.searchPrompt("LLM");
-    await orchestrator.verifyPromptExists("LLM");
-    await orchestrator.launchWorkbench();
+    await orchestrator.run();
 
 });
