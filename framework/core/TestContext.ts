@@ -21,6 +21,10 @@ import { ResponseEvaluator } from "../services/responseEvaluator";
 
 import {fileManager} from "../../config/fileManager"
 import { FilterService } from "../services/filterService";
+import { PromptValidationService } from "../services/promptValidationService";
+import { ExportService } from "../services/exportService";
+import { PromptExportParser } from "../services/promptExportParser";
+
 export class TestContext {
 
     config: AutomationConfig
@@ -84,6 +88,21 @@ export class TestContext {
     private _filterService?: FilterService
     get filterService() {
         return this._filterService ??= new FilterService(this.browser)
+    }
+
+    private _promptValidationService?: PromptValidationService
+    get promptValidationService() {
+        return this._promptValidationService ??= new PromptValidationService()
+    }
+
+    private _exportService?: ExportService
+    get exportService() {
+        return this._exportService ??= new ExportService()
+    }
+
+    private _promptExportParser?: PromptExportParser
+    get promptExportParser() {
+        return this._promptExportParser ??= new PromptExportParser()
     }
 
     // ---------- PAGES ----------
