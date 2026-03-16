@@ -47,14 +47,14 @@ export class ExportPromptsOrchestrator {
 
       const filePath = await ctx.projectDetailPage.exportPrompts(options?.format || 'json');
 
-      await ctx.projectDetailPage.verifyExport(filePath);
+      await ctx.exportService.verifyExport(filePath);
 
-      const prompt = await ctx.projectDetailPage.getPromptFromExport(
+      const prompt = await ctx.promptExportParser.getPromptFromExport(
         filePath,
         testData.prompt.promptText
       );
 
-      await ctx.projectDetailPage.verifyPromptFields(prompt, {
+      await ctx.promptValidationService.verifyPromptFields(prompt, {
         question_type: testData.metadata.questionType,
         input_text: testData.prompt.promptText,
         solution_process: testData.metadata.solutionProcess,
