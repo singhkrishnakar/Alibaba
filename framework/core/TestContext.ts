@@ -20,6 +20,7 @@ import { PromptCreator } from "../services/promptCreator";
 import { ResponseEvaluator } from "../services/responseEvaluator";
 
 import {fileManager} from "../../config/fileManager"
+import { FilterService } from "../services/filterService";
 export class TestContext {
 
     config: AutomationConfig
@@ -78,6 +79,11 @@ export class TestContext {
     get navigationService() {
         return this._navigationService ??=
             new NavigationService(this.browser, this.projectSelector, this.workbenchMenu)
+    }
+
+    private _filterService?: FilterService
+    get filterService() {
+        return this._filterService ??= new FilterService(this.browser)
     }
 
     // ---------- PAGES ----------

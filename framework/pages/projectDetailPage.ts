@@ -272,6 +272,16 @@ export class ProjectDetailPage extends BasePage {
 
         Logger.success("✅ Prompt fields verified successfully")
     }
+
+    
+
+
+
+
+
+
+   
+
 }
 
 function normalize(value?: string): string {

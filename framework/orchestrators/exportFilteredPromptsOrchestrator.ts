@@ -1,0 +1,77 @@
+import { TestContext } from '../core/TestContext';
+import { PromptTestData } from "../../types/testData.type";
+import { Logger } from '../utils/Logger';
+import { AutomationConfig } from '../../config/config';
+
+export interface ExportOptions {
+  filterByDateRange?: { startDate: string; endDate: string };
+  format?: 'json' | 'csv';
+}
+
+export class ExportPromptsOrchestrator {
+
+  constructor(private context: TestContext) { }
+
+  async run(testData: PromptTestData, options?: ExportOptions) {
+
+    const ctx = this.context;
+    const config = ctx.config;
+
+    Logger.info("⏱️ Starting LLM Export Automation");
+    const start = Date.now();
+
+    try {
+
+      const valid = await ctx.sessionValidator.validateSession(config.project.baseUrl);
+      if (!valid) throw new Error("Session expired. Run auth.setup.ts again");
+
+      await ctx.navigationService.openDashboard(config.project.baseUrl);
+
+      await ctx.projectSelector.navigateToProject(
+        config.project.projectName,
+        config.project.baseUrl,
+        config.project.projectUrl
+      );
+
+      await ctx.projectDetailPage.waitForPageLoad();
+
+      // Apply filter
+      if (options?.filterByDateRange) {
+
+        Logger.info("Applying Date Range filter");
+
+        const { startDate, endDate } = options.filterByDateRange;
+
+        await ctx.filterService.filterByDateRange(startDate, endDate);
+      }
+
+      const filePath = await ctx.projectDetailPage.exportPrompts(options?.format || 'json');
+
+      await ctx.projectDetailPage.verifyExport(filePath);
+
+      const prompt = await ctx.projectDetailPage.getPromptFromExport(
+        filePath,
+        testData.prompt.promptText
+      );
+
+      await ctx.projectDetailPage.verifyPromptFields(prompt, {
+        question_type: testData.metadata.questionType,
+        input_text: testData.prompt.promptText,
+        solution_process: testData.metadata.solutionProcess,
+        thinking_process: testData.metadata.thinkingProcess,
+        final_answer: testData.metadata.finalAnswer,
+        knowledge_points: testData.metadata.knowledgePoints,
+        level: testData.metadata.level,
+        discipline: testData.metadata.discipline
+      });
+
+      const duration = ((Date.now() - start) / 1000).toFixed(1);
+      Logger.info(`Automation completed in ${duration}s`);
+
+    } catch (error) {
+
+      Logger.error("Automation failed");
+      throw error;
+    }
+  }
+}

@@ -3,7 +3,7 @@ import { ExportPromptOrchestrator } from "../../framework/orchestrators/exportPr
 import { PromptTestData } from "../../types/testData.type"
 import { promptData } from "../../data/prompts/promptData"
 
-test.only("Export Prompt", async ({ testContext }) => {
+test("Export Prompt", async ({ testContext }) => {
 
     const orchestrator = new ExportPromptOrchestrator(testContext);
 
