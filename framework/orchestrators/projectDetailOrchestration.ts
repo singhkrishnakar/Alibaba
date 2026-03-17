@@ -17,19 +17,19 @@ export class ProjectDetailOrchestrator {
 
     async verifyProjectLoaded(expectedProjectName?: string): Promise<void> {
 
-        console.log("📂 Verifying Project Details page...");
+        console.log("📂 Verifying Project Details page...")
 
-        await this.page.waitForPageLoad();
+        await this.page.waitForPageLoad()
 
-        const title = await this.page.getProjectTitle();
+        const title = await this.page.getProjectTitle()
 
-        console.log(`  Project title: ${title}`);
+        console.log(`Project title: ${title}`)
 
         if (expectedProjectName && !title.includes(expectedProjectName)) {
-            throw new Error(`❌ Expected project ${expectedProjectName} but found ${title}`);
+            throw new Error(`Expected project ${expectedProjectName} but found ${title}`)
         }
 
-        console.log("✓ Project page loaded");
+        console.log("✓ Project page loaded")
     }
 
     // =========================
@@ -51,6 +51,9 @@ export class ProjectDetailOrchestrator {
         };
     }
 
+    async getProjectTitle(): Promise<string> {
+        return (await this.titleLocator.textContent()) ?? ""
+    }
     // =========================
     // SEARCH PROMPTS
     // =========================

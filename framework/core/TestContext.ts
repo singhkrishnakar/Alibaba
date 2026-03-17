@@ -19,14 +19,30 @@ import { ProjectSelector } from "../services/projectSelector";
 import { PromptCreator } from "../services/promptCreator";
 import { ResponseEvaluator } from "../services/responseEvaluator";
 
+import {fileManager} from "../../config/fileManager"
+import { FilterService } from "../services/filterService";
+import { PromptValidationService } from "../services/promptValidationService";
+import { ExportService } from "../services/exportService";
+import { PromptExportParser } from "../services/promptExportParser";
+
 export class TestContext {
 
     config: AutomationConfig
     browser: BrowserManager
+    fileManager: typeof fileManager
 
     constructor(config?: AutomationConfig, browserManager?: BrowserManager) {
+
         this.config = config || getConfig()
-        this.browser = browserManager || new BrowserManager(this.config.screenshotDir)
+        this.fileManager = fileManager
+
+        if (!browserManager) {
+            throw new Error(
+                "BrowserManager must be provided via Playwright fixture"
+            )
+        }
+
+        this.browser = browserManager
     }
 
     // ---------- AUTH ----------
@@ -67,6 +83,26 @@ export class TestContext {
     get navigationService() {
         return this._navigationService ??=
             new NavigationService(this.browser, this.projectSelector, this.workbenchMenu)
+    }
+
+    private _filterService?: FilterService
+    get filterService() {
+        return this._filterService ??= new FilterService(this.browser)
+    }
+
+    private _promptValidationService?: PromptValidationService
+    get promptValidationService() {
+        return this._promptValidationService ??= new PromptValidationService()
+    }
+
+    private _exportService?: ExportService
+    get exportService() {
+        return this._exportService ??= new ExportService()
+    }
+
+    private _promptExportParser?: PromptExportParser
+    get promptExportParser() {
+        return this._promptExportParser ??= new PromptExportParser()
     }
 
     // ---------- PAGES ----------

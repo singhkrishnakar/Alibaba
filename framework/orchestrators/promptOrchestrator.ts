@@ -1,9 +1,9 @@
-import { PromptTestData } from "../../data/promptData";
 import { PromptCreator } from "../services/promptCreator";
 import { ResponseEvaluator } from "../services/responseEvaluator";
 import { WorkbenchOrchestrator } from "./workbenchOrchestrator";
 import { AutomationConfig, PromptConfig } from "../../config/config";
 import { TestContext } from "../core/TestContext";
+import { PromptTestData } from "../../types/testData.type";
 
 export class PromptOrchestrator {
 
@@ -15,7 +15,7 @@ export class PromptOrchestrator {
 
     async runPrompt(testData: PromptTestData) {
 
-        const created = await this.context.promptCreator.createPrompt(testData.prompt, true);
+        const created = await this.context.promptCreator.createPrompt(testData, true);
         if (!created) throw new Error("Prompt creation failed");
 
         await this.context.workbenchOrchestrator.verifyUserNavigatedToWorkbench(
@@ -32,8 +32,8 @@ export class PromptOrchestrator {
         await this.context.responseEvaluator.mark2Incorrect3Correct();
     }
 
-    async createPrompt(promptConfig: PromptConfig): Promise<void> {
-        const created = await this.context.promptCreator.createPrompt(promptConfig);
+    async createPrompt(testData: PromptTestData): Promise<void> {
+        const created = await this.context.promptCreator.createPrompt(testData);
         if (!created) throw new Error('Prompt creation failed, aborting automation');
     }
 
@@ -71,7 +71,7 @@ export class PromptOrchestrator {
 
     private async executePromptFlow(testData: PromptTestData) {
 
-        const created = await this.context.promptCreator.createPrompt(testData.prompt, true);
+        const created = await this.context.promptCreator.createPrompt(testData, true);
 
         if (!created) {
             throw new Error('Prompt creation failed');

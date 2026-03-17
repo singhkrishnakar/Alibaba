@@ -2,13 +2,13 @@ import { BrowserManager } from "../browser/browserManager"
 
 export abstract class BasePage {
 
-  constructor(protected browser: BrowserManager) {}
+  constructor(protected browser: BrowserManager) { }
 
   protected page() {
     return this.browser.getPage()
   }
 
-   protected locator(selector: string) {
+  protected locator(selector: string) {
     return this.page().locator(selector)
   }
 
@@ -20,8 +20,11 @@ export abstract class BasePage {
     await this.page().waitForSelector(selector, { timeout })
   }
 
-  protected async waitForNavigation(timeout = 5000) {
-    return this.browser.waitForNavigation(timeout)
+  protected async waitForNavigation(
+    url?: string | RegExp | ((url: URL) => boolean),
+    timeout = 5000
+  ) {
+    return this.browser.waitForNavigation(url, timeout)
   }
 
   protected async waitForTimeout(ms: number) {
@@ -39,7 +42,7 @@ export abstract class BasePage {
     await this.page().waitForSelector(selector, {
       state: "hidden",
       timeout: 10000
-    }).catch(() => {})
+    }).catch(() => { })
 
     console.log("✓ Loader gone")
 

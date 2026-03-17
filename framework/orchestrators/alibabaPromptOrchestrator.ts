@@ -1,6 +1,6 @@
 import { AutomationConfig, getConfig } from "../../config/config"
-import { PromptTestData } from "../../data/promptData"
-import { Logger } from "../utils/logger"
+import { PromptTestData } from "../../types/testData.type";
+import { Logger } from "../utils/Logger"
 import { TestContext } from "../core/TestContext"
 
 export class AutomationOrchestrator {
@@ -25,7 +25,7 @@ export class AutomationOrchestrator {
 
             Logger.info("Opening browser and validating session...")
 
-            await ctx.browser.start(this.config.headless, true)
+            //await ctx.browser.start(this.config.headless, true)
 
             const valid = await ctx.sessionValidator.validateSession(
                 this.config.project.baseUrl
@@ -51,7 +51,7 @@ export class AutomationOrchestrator {
 
             await ctx.workbenchMenu.launch()
 
-            await ctx.promptOrchestrator.createPrompt(testData.prompt)
+            await ctx.promptOrchestrator.createPrompt(testData)
 
             await ctx.promptOrchestrator.handleResponses(testData)
 
@@ -67,7 +67,7 @@ export class AutomationOrchestrator {
 
             console.error(`\n❌ Automation failed after ${totalDuration}s\n`)
 
-            await this.context.browser.close()
+            //await this.context.browser.close()
 
             throw error
 
