@@ -1,4 +1,7 @@
 import { defineConfig } from '@playwright/test';
+import * as dotenv from "dotenv";
+
+dotenv.config(); // ✅ Load environment variables before config
 
 export default defineConfig({
 
@@ -10,25 +13,32 @@ export default defineConfig({
         headless: false
     },
 
-    workers: 1, // run tests in parallel
-    fullyParallel: true,
+    workers: 1,
 
     projects: [
 
-        // Setup project (runs login once)
+        // Login setup (only for UI tests)
         {
             name: 'setup',
             testMatch: /auth\.setup\.ts/
         },
 
-        // Actual tests
+        // UI Tests
         {
-            name: 'chromium',
+            name: 'ui',
             dependencies: ['setup'],
 
-            // use: {
-            //     storageState: 'playwright/.auth/user.json'
-            // }
+            use: {
+                storageState: 'playwright/.auth/user.json'
+            },
+
+            testMatch: /tests\/project\/.*/
+        },
+
+        // API Tests (NO UI LOGIN)
+        {
+            name: 'api',
+            testMatch: /tests\/api\/.*/
         }
 
     ]
