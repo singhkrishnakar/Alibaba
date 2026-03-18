@@ -2,7 +2,6 @@ import { AutomationConfig, getConfig } from "../../config/config";
 import { BrowserManager } from "../browser/browserManager";
 
 import { Authenticator } from "../auth/authenticator";
-import { SessionValidator } from "../auth/sessionManager";
 
 import { WorkbenchMenu } from "../pages/workbenchMenu";
 import { WorkbenchPage } from "../pages/workbenchPage";
@@ -16,12 +15,15 @@ import { ProjectSelector } from "../services/projectSelector";
 import { ResponseEvaluator } from "../services/responseEvaluator";
 import { WorkbenchService } from "../services/workbenchService";
 
-import { fileManager } from "../../config/fileManager"
+import { fileManager } from "../../config/fileManager.config"
 import { FilterService } from "../services/filterService";
 import { PromptValidationService } from "../services/promptValidationService";
 import { ExportService } from "../services/exportService";
 import { PromptExportParser } from "../services/promptExportParser";
 import { PromptCreatorService } from "../services/promptCreatorService";
+
+import { SessionValidator } from '../auth/sessionManager';
+import { UserSessionManager } from '../auth/sessionManager';
 
 export class TestContext {
 
@@ -50,9 +52,15 @@ export class TestContext {
         return this._authenticator ??= new Authenticator(this.browser)
     }
 
-    private _sessionValidator?: SessionValidator
+    private _sessionValidator?: SessionValidator;
     get sessionValidator() {
-        return this._sessionValidator ??= new SessionValidator(this.browser)
+        // ✅ Use SessionValidator, not UserSessionManager
+        return this._sessionValidator ??= new SessionValidator(this.browser);
+    }
+
+    private _userSessionManager?: UserSessionManager;
+    get userSessionManager() {
+        return this._userSessionManager ??= new UserSessionManager();
     }
 
     // ---------- SERVICES ----------

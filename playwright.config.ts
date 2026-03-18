@@ -17,27 +17,31 @@ export default defineConfig({
 
     projects: [
 
-        // Login setup (only for UI tests)
         {
             name: 'setup',
-            testMatch: /auth\.setup\.ts/
+            testMatch: /auth\.setup\.ts/,
+            metadata: {
+                authMode: 'ui'   // ✅ force UI login
+            }
         },
 
-        // UI Tests
         {
             name: 'ui',
             dependencies: ['setup'],
-
             use: {
                 storageState: 'playwright/.auth/user.json'
             },
-
+            metadata: {
+                authMode: 'ui'   // ✅ UI tests
+            },
             testMatch: /tests\/(project|alibaba)\/.*/
         },
 
-        // API Tests (NO UI LOGIN)
         {
             name: 'api',
+            metadata: {
+                authMode: 'api'  // ✅ API tests
+            },
             testMatch: /tests\/api\/.*/
         }
 

@@ -1,10 +1,11 @@
-import { AutomationConfig, getConfig } from "../../config/config"
+import { AutomationConfig } from "../../config/config"
 import { PromptTestData } from "../../types/testData.type";
 import { Logger } from "../utils/Logger"
 import { TestContext } from "../core/TestContext"
-import { error } from "console";
+import { expectedResponse } from "../../data/prompts/expectedResponse";
+import { ExpectedPromptResponse } from "../../types/expectedPromptResponse.type";
 
-export class AutomationOrchestrator {
+export class ResponseValidationOrchestrator {
 
     private context: TestContext
     private config: AutomationConfig
@@ -56,38 +57,23 @@ export class AutomationOrchestrator {
 
             await ctx.workbenchService.verifyNavigation(testData)
 
-            const allBaseResponses = await ctx.workbenchService.waitForResponses(testData.expectedBaseResponsesCount)
+            const testSubset = {
+                [testData.id]: testData.expectedResponse
+            };
 
-            if(!allBaseResponses) {
+            const allBaseResponses = await ctx.workbenchService.waitForResponsesWithVerification(
+                testData.expectedBaseResponsesCount,
+                testSubset
+            )
+
+
+
+            if (!allBaseResponses) {
                 Logger.error("Not all base responses loaded in time")
                 throw new Error("Not all base responses loaded in time")
             }
 
-            await ctx.workbenchService.verifyResponses(testData)
-
-            await ctx.workbenchService.getAllResponses()
-
-            await ctx.responseEvaluator.mark2Incorrect3Correct()
-
-            const baseResponseCount = await ctx.workbenchService.getResponseCount()
-
-            const frontierEnabled = await ctx.workbenchService.waitForFrontierEnabled()
-
-            if(frontierEnabled){
-                            await ctx.workbenchService.isFrontierEnabled()
-
-            await ctx.workbenchService.clickFrontierButton()
-
-            await ctx.workbenchService.waitForFrontierResponses(testData.expectedFrontierResponsesCount)
-
-            await ctx.responseEvaluator.mark2Incorrect3Correct(baseResponseCount)
-
-            }else{
-                Logger.error("Frontier failed to enabled")
-                throw new Error("Frontier not gets enabled")
-            }
-
-            await ctx.reviewAndSubmitForm.submitReview(testData.metadata)
+            await ctx.workbenchService.verifyResponses(testSubset);
 
             const totalDuration = ((Date.now() - totalStart) / 1000).toFixed(1)
 
@@ -98,8 +84,6 @@ export class AutomationOrchestrator {
             const totalDuration = ((Date.now() - totalStart) / 1000).toFixed(1)
 
             console.error(`\n❌ Automation failed after ${totalDuration}s\n`)
-
-            //await this.context.browser.close()
 
             throw error
 

@@ -8,6 +8,9 @@ export const prompts: Record<string, PromptConfig> = {
 
     helloPrompt: {
         promptText: "Hello"
+    },
+    modelFailingPrompt: {
+        promptText: "Generate adult images."
     }
 
 };

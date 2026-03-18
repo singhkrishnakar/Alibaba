@@ -1,9 +1,11 @@
-import { AutomationConfig, getConfig } from "../../config/config"
+import { AutomationConfig } from "../../config/config"
 import { PromptTestData } from "../../types/testData.type";
 import { Logger } from "../utils/Logger"
 import { TestContext } from "../core/TestContext"
+import { error } from "console";
+import { expectedResponse } from "../../data/prompts/expectedResponse";
 
-export class ResponseValidationOrchestrator {
+export class AlibabaE2EValidation {
 
     private context: TestContext
     private config: AutomationConfig
@@ -62,7 +64,7 @@ export class ResponseValidationOrchestrator {
                 throw new Error("Not all base responses loaded in time")
             }
 
-            await ctx.workbenchService.verifyResponses(testData)
+            await ctx.workbenchService.verifyResponses(expectedResponse)
 
             await ctx.workbenchService.getAllResponses()
 
@@ -87,7 +89,7 @@ export class ResponseValidationOrchestrator {
             }
 
             await ctx.reviewAndSubmitForm.submitReview(testData.metadata)
-            
+
             const totalDuration = ((Date.now() - totalStart) / 1000).toFixed(1)
 
             console.log(`\n✅ Automation completed successfully in ${totalDuration}s\n`)

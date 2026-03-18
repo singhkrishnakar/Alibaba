@@ -9,7 +9,7 @@ test.describe("Export Prompts Tests", () => {
         await orchestrator.run(promptData[0]);
     });
 
-    test.only("Export Prompt with date filter", async ({ testContext }) => {
+    test("Export Prompt with date filter", async ({ testContext }) => {
 
         const orchestrator = new ExportPromptsOrchestrator(testContext);
 

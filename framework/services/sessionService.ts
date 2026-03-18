@@ -1,22 +1,23 @@
 import { Page } from '@playwright/test';
 import { Logger } from '../utils/Logger';
+import { getConfig } from '../../config/config';
 
 export class SessionService {
 
   async createSession(page: Page, token: string): Promise<void> {
 
+    const config = getConfig();
+
     Logger.info("🔐 Injecting API session");
 
-    await page.goto("https://llmtoolkit-staging.innodata.com");
-
-    await page.evaluate((token) => {
-      localStorage.setItem("auth_token", token);
+    await page.addInitScript((tokenValue) => {
+      localStorage.setItem("auth_token", tokenValue);
     }, token);
 
-    await page.reload();
+    await page.goto(config.project.baseUrl, {
+      waitUntil: 'domcontentloaded'
+    });
 
-    Logger.success("✓ API session created");
-
+    Logger.success("✅ API session created");
   }
-
 }

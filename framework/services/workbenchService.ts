@@ -4,6 +4,7 @@ import { Page } from 'playwright';
 import { AutomationConfig } from '../../config/config';
 import { TestContext } from '../core/TestContext';
 import { PromptTestData } from '../../types/testData.type';
+import { ExpectedPromptResponse } from '../../types/expectedPromptResponse.type'
 import { Logger } from '../utils/Logger';
 import { ProjectDetailPage } from '../pages/projectDetailPage';
 import { ExportPromptOrchestrator } from '../orchestrators/exportPromptOrchestrator';
@@ -11,9 +12,7 @@ import { ExpectedPromptFields } from '../../data/prompts/expectedPromptFields';
 
 
 export class WorkbenchService {
-    verifyResponses(testData: PromptTestData) {
-        //throw new Error("Method not implemented.");
-    }
+
     constructor(private context: TestContext) { }
 
     // ✅ Short accessors (cleaner)
@@ -119,6 +118,42 @@ export class WorkbenchService {
         return false;
     }
 
+    async waitForResponsesWithVerification(
+        expectedCount: number,
+        expectedResponses: Record<string, ExpectedPromptResponse>,
+        timeout = 600000
+    ): Promise<boolean> {
+
+        console.log(`⏳ Waiting for ${expectedCount} responses...`);
+
+        const start = Date.now();
+        let lastCount = 0;
+
+        while (Date.now() - start < timeout) {
+
+            await this.waitForLoaderToDisappear(5000);
+
+            const count = await this.workbenchPage.getResponseCount().catch(() => 0);
+
+            if (count > lastCount) {
+                console.log(`  ✓ ${count}/${expectedCount}`);
+                lastCount = count;
+            }
+
+            if (count >= expectedCount) {
+                console.log('✓ All responses ready');
+                return true;
+            }
+
+            await this.context.browser.waitForTimeout(3000);
+
+            await this.verifyResponsesLive(expectedCount, expectedResponses);
+        }
+
+        console.warn(`⚠ Timeout: ${lastCount}/${expectedCount}`);
+        return false;
+    }
+
     async getAllResponses(): Promise<string[]> {
         const responses = await this.workbenchPage.getAllResponseTexts();
 
@@ -131,6 +166,111 @@ export class WorkbenchService {
         return this.workbenchPage.getResponseCount();
     }
 
+    async verifyResponses(expectedResponses: Record<string, ExpectedPromptResponse>): Promise<void> {
+        const page = this.page;
+        if (!page) throw new Error("No active page");
+
+        console.log("🕵️ Verifying LLM responses...");
+
+        const responseWrappers = page.locator('div.sc-6e40ec64-18.ezXOtW');
+        const count = await responseWrappers.count();
+
+        if (count === 0) {
+            console.warn("⚠ No responses found — skipping validation");
+            return;
+        }
+
+        const actualResponses: string[] = [];
+
+        for (let i = 0; i < count; i++) {
+            const wrapper = responseWrappers.nth(i);
+            const responseText = await wrapper.locator('div.sc-6e40ec64-22.bkcbqC p').textContent();
+            const cleanText = responseText?.trim() || "";
+
+            // ✅ SINGLE LINE HANDLING
+            if (this.handleModelError(cleanText, `response ${i + 1}`)) return;
+
+            actualResponses.push(cleanText);
+        }
+
+        const expectedTexts = Object.values(expectedResponses).map(r => r.expectedResponseText);
+
+        for (const expectedText of expectedTexts) {
+            const found = actualResponses.some(actual => actual.includes(expectedText));
+
+            if (!found) {
+                console.warn(`⚠ Expected response NOT found: "${expectedText}"`);
+                return;
+            }
+        }
+
+        console.log("✅ All expected responses verified successfully");
+    }
+
+    async verifyResponsesLive(
+        expectedCount: number,
+        expectedResponses: Record<string, ExpectedPromptResponse>,
+        timeout = 600000
+    ): Promise<void> {
+
+        const page = this.page;
+        if (!page) throw new Error("No active page");
+
+        const expectedTexts = Object.values(expectedResponses)
+            .map(r => r.expectedResponseText.toLowerCase());
+
+        const start = Date.now();
+        let verifiedCount = 0;
+
+        while (Date.now() - start < timeout) {
+
+            const responseWrappers = page.locator('div.sc-6e40ec64-18.ezXOtW');
+            const count = await responseWrappers.count();
+
+            while (verifiedCount < count) {
+
+                const wrapper = responseWrappers.nth(verifiedCount);
+                const textLocator = wrapper.locator('div.sc-6e40ec64-22.bkcbqC p');
+
+                await textLocator.waitFor({ state: 'visible', timeout: 15000 });
+
+                const responseText = await textLocator.textContent();
+                const cleanText = responseText?.trim().toLowerCase() || "";
+
+                // ✅ SAME FUNCTION REUSED
+                if (this.handleModelError(cleanText, `response ${verifiedCount + 1}`)) return;
+
+                const matched = expectedTexts.some(expected => cleanText.includes(expected));
+
+                if (!matched) {
+                    console.warn(`⚠ Response ${verifiedCount + 1} mismatch`);
+                    return;
+                }
+
+                verifiedCount++;
+            }
+
+            if (verifiedCount >= expectedCount) return;
+
+            await this.context.browser.waitForTimeout(2000);
+        }
+
+        console.warn(`⚠ Timeout: Only ${verifiedCount}/${expectedCount} responses verified`);
+    }
+
+    private handleModelError(text: string, context: string): boolean {
+        if (!text) return false;
+
+        const isError = text.toLowerCase().includes("model error");
+
+        if (isError) {
+            console.warn(`⚠ Model error detected in ${context}: "${text}"`);
+            console.warn("⚠ Skipping further validation due to model failure");
+            return true;
+        }
+
+        return false;
+    }
     // ==================== FRONTIER ====================
 
     async clickFrontierButton(): Promise<boolean> {

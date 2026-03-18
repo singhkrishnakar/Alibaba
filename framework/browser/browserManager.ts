@@ -1,49 +1,64 @@
-import { Page } from "@playwright/test"
-import * as fs from "fs"
-import * as path from "path"
+import { Browser, BrowserContext, Page, chromium } from "@playwright/test";
+import * as fs from "fs";
+import * as path from "path";
+import { UserSessionManager } from '../auth/sessionManager';
 
 export class BrowserManager {
 
-    private page: Page
-    private screenshotDir: string
-    private screenshotCount = 1
+    private browser!: Browser;            // ✅ Add browser property
+    private context!: BrowserContext;    // ✅ Add context property
+    private page: Page;
+    private screenshotDir: string;
+    private screenshotCount = 1;
 
     constructor(page: Page, screenshotDir = "./screenshots") {
-        this.page = page
-        this.screenshotDir = screenshotDir
+        this.page = page;
+        this.screenshotDir = screenshotDir;
 
         if (!fs.existsSync(screenshotDir)) {
-            fs.mkdirSync(screenshotDir, { recursive: true })
+            fs.mkdirSync(screenshotDir, { recursive: true });
         }
     }
 
+    // ---------- Page Getter ----------
     getPage(): Page {
-        return this.page
+        return this.page;
     }
 
-    async navigate(
-        url: string,
-        waitUntil: "domcontentloaded" | "load" | "networkidle" = "domcontentloaded",
-        retries = 2
-    ) {
+    // ---------- Browser Startup with session ----------
+    async start(workerIndex: number) {
 
+        // ✅ Launch browser if not already
+        if (!this.browser) {
+            this.browser = await chromium.launch({ headless: false });
+        }
+
+        // ✅ Load session per worker
+        const storageStatePath = UserSessionManager.getStorageStatePath(workerIndex);
+
+        this.context = await this.browser.newContext({
+            storageState: fs.existsSync(storageStatePath) ? storageStatePath : undefined,
+        });
+
+        this.page = await this.context.newPage();
+    }
+
+    // ---------- Navigation ----------
+    async navigate(url: string, waitUntil: "domcontentloaded" | "load" | "networkidle" = "domcontentloaded", retries = 2) {
         for (let i = 0; i <= retries; i++) {
-
             try {
                 await this.page.goto(url, { waitUntil, timeout: 15000 });
-
                 console.log(`✓ Navigated to ${url}`);
                 return;
-
             } catch (err) {
-
                 if (i === retries) throw err;
-
                 console.log(`⚠ Navigation retry ${i + 1}...`);
                 await this.page.waitForTimeout(2000);
             }
         }
     }
+
+    // ---------- Other methods stay the same ----------
 
     async click(selector: string, timeout = 2000): Promise<boolean> {
 
@@ -130,4 +145,5 @@ export class BrowserManager {
             return false;
         }
     }
+
 }

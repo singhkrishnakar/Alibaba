@@ -1,31 +1,24 @@
 import { test } from '@playwright/test';
-import { userConfig } from '../../config/users.config';
-import { BrowserManager } from '../../framework/browser/browserManager';
-import { Authenticator } from '../../framework/auth/authenticator';
+import { AuthManager } from '../../framework/auth/authManager';
+import { UserSessionManager } from '../../framework/auth/sessionManager';
 import { getConfig } from '../../config/config';
 
-test('authenticate users', async ({ page }) => {
+test('authenticate users', async ({ page }, testInfo) => {
 
   const config = getConfig();
 
-  const browser = new BrowserManager(
+  // ✅ FIX: define workerIndex
+  const workerIndex = testInfo.workerIndex;
+
+  await AuthManager.authenticate({
     page,
-    config.screenshotDir
-  );
+    workerIndex,
+    baseUrl: config.project.baseUrl,
+    testInfo
+  });
 
-  const auth = new Authenticator(browser);
+  const path = UserSessionManager.getStorageStatePath(workerIndex);
 
-  for (const user of userConfig.users) {
-
-    await auth.login(
-      user,
-      'https://llmtoolkit-staging.innodata.com'
-    );
-
-    await page.context().storageState({
-      path: 'playwright/.auth/user.json'
-    });
-
-  }
+  await page.context().storageState({ path });
 
 });

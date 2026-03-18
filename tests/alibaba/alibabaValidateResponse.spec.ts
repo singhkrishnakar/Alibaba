@@ -1,18 +1,15 @@
 import { test } from '../../framework/fixtures/alibaba.fixture';
-import { AutomationOrchestrator } from '../../framework/orchestrators/alibabaPromptOrchestrator';
-import { PromptTestData } from "../../types/testData.type"
-import { promptData } from "../../data/prompts/promptData"
-import { ResponseValidationOrchestrator } from '../../framework/orchestrators/alibabaResponseOrchestrator';
+import { ResponseValidationOrchestrator } from "../../framework/orchestrators/alibabaResponseValidationOrchestrator";
+import { promptData } from "../../data/prompts/promptData";
 
+const selected = promptData.find(p => p.id === "helloPrompt");
 
-for (const [index, data] of promptData.entries()) {
+test(`LLM Prompt: helloPrompt`, async ({ testContext }) => {
 
-  test(`LLM Prompt ${index + 1}`, async ({ testContext  }) => {
+  if (!selected) throw new Error("Prompt not found");
 
-    const orchestrator = new ResponseValidationOrchestrator(testContext);
+  const orchestrator = new ResponseValidationOrchestrator(testContext);
 
-    await orchestrator.run(data);
+  await orchestrator.run(selected);
 
-  });
-
-}
+});

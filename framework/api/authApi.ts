@@ -1,31 +1,35 @@
-import { APIRequestContext } from "@playwright/test"
-import { Logger } from "../utils/Logger"
+import { APIRequestContext } from "@playwright/test";
+import { Logger } from "../utils/Logger";
+import { UserCredential } from "../../config/users.config";
 
 export class AuthApi {
 
   constructor(private apiContext: APIRequestContext) {}
 
-  async login() {
+  async login(user: UserCredential) {
 
-    Logger.info("🔑 Starting API authentication")
+    Logger.info("🔑 Starting API authentication");
 
     const response = await this.apiContext.post("/api/v1/auth/login", {
       data: {
-        email: process.env.EMAIL,
-        password: process.env.PASSWORD
+        email: user.email,
+        password: user.password
       }
-    })
+    });
 
-    Logger.info(`📥 Response status: ${response.status()}`)
-
-    const body = await response.json()
+    Logger.info(`📥 Response status: ${response.status()}`);
 
     if (!response.ok()) {
-      throw new Error(`Login failed: ${response.status()}`)
+      throw new Error(`Login failed: ${response.status()}`);
     }
 
-    Logger.success("✅ API login successful")
+    const body = await response.json();
 
-    // ❌ NO TOKEN RETURN
+    Logger.success("✅ API login successful");
+
+    return {
+      token: body.token,
+      storageState: await this.apiContext.storageState()
+    };
   }
 }
