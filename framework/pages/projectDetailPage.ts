@@ -4,7 +4,7 @@ import { TestContext } from '../core/TestContext';
 import { Logger } from '../utils/Logger';
 import * as fs from "fs/promises"
 import path from "path"
-import { ExpectedPromptFields } from '../../data/expectedPromptFields';
+import { ExpectedPromptFields } from '../../data/prompts/expectedPromptFields';
 import { QUESTION_TYPE_EXPORT_MAP } from '../constants/promptMappings';
 
 export class ProjectDetailPage extends BasePage {

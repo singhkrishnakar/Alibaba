@@ -9,10 +9,10 @@ import { MetadataConfig } from "../../types/metadata.types";
 export class ReviewAndSubmitForm {
 
     private context: TestContext
-    
-        constructor(context: TestContext) {
-            this.context = context
-        }
+
+    constructor(context: TestContext) {
+        this.context = context
+    }
 
     async submitReview(metadata: MetadataConfig) {
 

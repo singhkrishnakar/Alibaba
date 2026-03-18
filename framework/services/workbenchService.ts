@@ -7,14 +7,14 @@ import { PromptTestData } from '../../types/testData.type';
 import { Logger } from '../utils/Logger';
 import { ProjectDetailPage } from '../pages/projectDetailPage';
 import { ExportPromptOrchestrator } from '../orchestrators/exportPromptOrchestrator';
-import { ExpectedPromptFields } from '../../data/expectedPromptFields';
+import { ExpectedPromptFields } from '../../data/prompts/expectedPromptFields';
 
 
 export class WorkbenchService {
     verifyResponses(testData: PromptTestData) {
         //throw new Error("Method not implemented.");
     }
-    constructor(private context: TestContext) {}
+    constructor(private context: TestContext) { }
 
     // ✅ Short accessors (cleaner)
     private get page() {
@@ -184,26 +184,4 @@ export class WorkbenchService {
         console.warn('⚠ Frontier not enabled');
         return false;
     }
-
-    //need confirmation on thi
-    /*
-        async runPrompt(testData: PromptTestData) {
-
-        const created = await this.context.promptCreator.createPrompt(testData, true);
-        if (!created) throw new Error("Prompt creation failed");
-
-        await this.context.workbenchOrchestrator.verifyUserNavigatedToWorkbench(
-            this.context.config.project.baseUrl,
-            testData
-        );
-
-        await this.context.workbenchOrchestrator.waitForAllResponses(
-            testData.expectedBaseResponsesCount,
-            600000
-        );
-
-        await this.context.workbenchOrchestrator.getAllResponses();
-        await this.context.responseEvaluator.mark2Incorrect3Correct();
-    }
-        */
 }

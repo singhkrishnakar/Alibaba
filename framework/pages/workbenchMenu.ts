@@ -108,7 +108,7 @@ export class WorkbenchMenu extends BasePage {
 
     }
 
-    async waitForLoader() { 
+    async waitForLoader() {
         console.log('⏳ Waiting for workbench to load...')
         try {
             await this.page().locator('text=Loading...').waitFor({

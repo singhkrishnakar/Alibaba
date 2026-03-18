@@ -1,5 +1,5 @@
 import { Logger } from "../utils/Logger";
-import { ExpectedPromptFields } from "../../data/expectedPromptFields";
+import { ExpectedPromptFields } from "../../data/prompts/expectedPromptFields";
 import { QUESTION_TYPE_EXPORT_MAP } from "../constants/promptMappings";
 
 export class PromptValidationService {

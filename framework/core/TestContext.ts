@@ -16,7 +16,7 @@ import { ProjectSelector } from "../services/projectSelector";
 import { ResponseEvaluator } from "../services/responseEvaluator";
 import { WorkbenchService } from "../services/workbenchService";
 
-import {fileManager} from "../../config/fileManager"
+import { fileManager } from "../../config/fileManager"
 import { FilterService } from "../services/filterService";
 import { PromptValidationService } from "../services/promptValidationService";
 import { ExportService } from "../services/exportService";

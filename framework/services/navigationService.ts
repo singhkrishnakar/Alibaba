@@ -3,20 +3,9 @@ import { ProjectSelector } from '../services/projectSelector';
 import { WorkbenchMenu } from "../pages/workbenchMenu";
 
 export class NavigationService {
-    
+
     constructor(private browser: BrowserManager, private projectSelector: ProjectSelector,
         private workbenchMenu: WorkbenchMenu) { }
-
-    // async openDashboard(baseUrl: string) {
-
-    //     const page = this.browser.getPage();
-
-    //     await page.goto(`${baseUrl}/dashboard`);
-
-    //     await this.browser.waitForLoader();
-
-    //     await page.waitForLoadState("networkidle");
-    // }
 
     async openDashboard(baseUrl: string) {
 

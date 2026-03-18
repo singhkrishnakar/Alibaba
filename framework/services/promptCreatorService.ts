@@ -201,12 +201,12 @@ export class PromptCreatorService {
 
     async createPrompt1(data: any): Promise<boolean> {
 
-    await this.promptCreator.navigateToCreatePrompt(data.baseUrl)
+        await this.promptCreator.navigateToCreatePrompt(data.baseUrl)
 
-    await this.promptCreator.fillPromptForm(data)
+        await this.promptCreator.fillPromptForm(data)
 
-    await this.promptCreator.submitPrompt()
+        await this.promptCreator.submitPrompt()
 
-    return await this.promptCreator.isPromptCreated()
-  }
+        return await this.promptCreator.isPromptCreated()
+    }
 }
