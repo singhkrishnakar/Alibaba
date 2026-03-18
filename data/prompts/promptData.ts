@@ -7,7 +7,7 @@ export const promptData: PromptTestData[] = [
     {
         prompt: prompts.simpleGreeting,
         expectedBaseResponsesCount: 5,
-        frontierResponsesCount: 10,
+        expectedFrontierResponsesCount: 10,
         metadata: metadata.chemistryUndergrad
     }
 

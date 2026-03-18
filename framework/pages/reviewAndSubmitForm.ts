@@ -1,9 +1,12 @@
-import { FormHandler, MetadataConfig } from "../services/formHandler";
+import { FormHandler } from "../services/formHandler";
 import { BrowserManager } from "../browser/browserManager";
 import { TestContext } from "../core/TestContext";
 import { PromptTestData } from "../../types/testData.type";
 import { Logger } from '../utils/Logger';
-export class ReviewOrchestrator {
+import { MetadataConfig } from "../../types/metadata.types";
+
+
+export class ReviewAndSubmitForm {
 
     private context: TestContext
     

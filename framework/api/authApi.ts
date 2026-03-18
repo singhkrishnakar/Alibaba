@@ -19,7 +19,6 @@ export class AuthApi {
     Logger.info(`📥 Response status: ${response.status()}`)
 
     const body = await response.json()
-    console.log("LOGIN RESPONSE:", JSON.stringify(body, null, 2))
 
     if (!response.ok()) {
       throw new Error(`Login failed: ${response.status()}`)

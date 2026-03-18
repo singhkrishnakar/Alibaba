@@ -1,16 +1,7 @@
 // Form Handler - Fills and submits forms
+import { MetadataConfig } from '../../types/metadata.types';
 import { BrowserManager } from '../browser/browserManager';
-
-export interface MetadataConfig {
-    finalAnswer: string;
-    solutionProcess: string;
-    thinkingProcess: string;
-    keyPoints?: string;
-    answerUnit?: string;
-    noUnitRequired?: boolean;
-    /** Custom Knowledge Point for "Enter key point" -> ADD flow */
-    customKnowledgePoint?: string;
-}
+import { Logger } from '../utils/Logger';
 
 export class FormHandler {
     constructor(private browser: BrowserManager) { }
@@ -19,86 +10,152 @@ export class FormHandler {
     /**
      * Fill the Review and Submit metadata form (Final Answer, Solution Process, Thinking Process, Answer Unit).
      */
+    // async fillMetadata(metadata: MetadataConfig): Promise<void> {
+    //     const page = this.browser.getPage();
+    //     try {
+    //         console.log('📋 Filling Review and Submit metadata form...');
+    //         const startTime = Date.now();
+
+    //         // ---------- Final Answer ----------
+    //         if (metadata.finalAnswer) {
+    //             const success = await this.addFinalAnswer(metadata.finalAnswer);
+
+    //             if (!success) {
+    //                 throw new Error('❌ Mandatory field "Final Answer" not filled');
+    //             }
+
+    //             await this.browser.takeScreenshot('11_final_answer_added');
+    //             await this.browser.waitForTimeout(800);
+    //         }
+
+    //         // ---------- Solution Process ----------
+    //         if (metadata.solutionProcess) {
+    //             const success = await this.addSolutionProcess(metadata.solutionProcess);
+
+    //             if (!success) {
+    //                 throw new Error('❌ Mandatory field "Solution Process" not filled');
+    //             }
+
+    //             await this.browser.takeScreenshot('12_solution_process_added');
+    //             await this.browser.waitForTimeout(800);
+    //         }
+
+    //         // ---------- Thinking Process ----------
+    //         if (metadata.thinkingProcess) {
+    //             const success = await this.addThinkingProcess(metadata.thinkingProcess);
+
+    //             if (!success) {
+    //                 throw new Error('❌ Mandatory field "Thinking Process" not filled');
+    //             }
+
+    //             await this.browser.takeScreenshot('13_thinking_process_added');
+    //             await this.browser.waitForTimeout(800);
+    //         }
+
+    //         // ---------- Answer Unit ----------
+    //         if (metadata.answerUnit) {
+
+    //             const checked = await this.checkNoUnitRequired();
+
+    //             // Scroll element into view before screenshot
+    //             await this.browser.getPage()
+    //                 .locator('text=Answer Unit')
+    //                 .scrollIntoViewIfNeeded();
+
+    //             await this.browser.takeScreenshot('14_answer_unit_checked');
+
+    //             if (!checked) {
+    //                 throw new Error('❌ "No unit required" checkbox is not checked but it is mandatory');
+    //             }
+
+    //             await this.browser.waitForTimeout(800);
+    //         }
+
+
+    //         // ---------- Custom Knowledge Point ----------
+    //         if (metadata.customKnowledgePoint) {
+    //             const success = await this.addKnowledgePoint(metadata.customKnowledgePoint);
+
+    //             if (!success) {
+    //                 throw new Error('❌ Mandatory field "Knowledge Point" not filled');
+    //             }
+
+    //             await this.browser.takeScreenshot('15_custom_knowledge_point_added');
+    //             await this.browser.waitForTimeout(1000);
+    //         }
+
+    //         const duration = Date.now() - startTime;
+    //         console.log(`✅ Metadata form filled successfully (${duration}ms)`);
+
+    //     } catch (error) {
+    //         console.error(`❌ Failed to fill metadata: ${error}`);
+    //         throw error;
+    //     }
+    // }
+
     async fillMetadata(metadata: MetadataConfig): Promise<void> {
         const page = this.browser.getPage();
+        const startTime = Date.now();
+
         try {
-            console.log('📋 Filling Review and Submit metadata form...');
-            const startTime = Date.now();
+            Logger.info('📋 Filling Review and Submit metadata form...');
 
             // ---------- Final Answer ----------
             if (metadata.finalAnswer) {
+                Logger.info('📝 Adding Final Answer...');
                 const success = await this.addFinalAnswer(metadata.finalAnswer);
-
-                if (!success) {
-                    throw new Error('❌ Mandatory field "Final Answer" not filled');
-                }
-
+                if (!success) throw new Error('Mandatory field "Final Answer" not filled');
+                Logger.success('✓ Final Answer added');
                 await this.browser.takeScreenshot('11_final_answer_added');
-                await this.browser.waitForTimeout(800);
             }
 
             // ---------- Solution Process ----------
             if (metadata.solutionProcess) {
+                Logger.info('📝 Adding Solution Process...');
                 const success = await this.addSolutionProcess(metadata.solutionProcess);
-
-                if (!success) {
-                    throw new Error('❌ Mandatory field "Solution Process" not filled');
-                }
-
+                if (!success) throw new Error('Mandatory field "Solution Process" not filled');
+                Logger.success('✓ Solution Process added');
                 await this.browser.takeScreenshot('12_solution_process_added');
-                await this.browser.waitForTimeout(800);
             }
 
             // ---------- Thinking Process ----------
             if (metadata.thinkingProcess) {
+                Logger.info('📝 Adding Thinking Process...');
                 const success = await this.addThinkingProcess(metadata.thinkingProcess);
-
-                if (!success) {
-                    throw new Error('❌ Mandatory field "Thinking Process" not filled');
-                }
-
+                if (!success) throw new Error('Mandatory field "Thinking Process" not filled');
+                Logger.success('✓ Thinking Process added');
                 await this.browser.takeScreenshot('13_thinking_process_added');
-                await this.browser.waitForTimeout(800);
             }
 
             // ---------- Answer Unit ----------
             if (metadata.answerUnit) {
-
+                Logger.info('📝 Validating Answer Unit...');
                 const checked = await this.checkNoUnitRequired();
-
-                // Scroll element into view before screenshot
-                await this.browser.getPage()
-                    .locator('text=Answer Unit')
-                    .scrollIntoViewIfNeeded();
-
+                await page.locator('text=Answer Unit').scrollIntoViewIfNeeded();
                 await this.browser.takeScreenshot('14_answer_unit_checked');
 
-                if (!checked) {
-                    throw new Error('❌ "No unit required" checkbox is not checked but it is mandatory');
-                }
-
-                await this.browser.waitForTimeout(800);
+                if (!checked) throw new Error('Mandatory field "Answer Unit" not checked');
+                Logger.success('✓ Answer Unit validated');
             }
 
-
             // ---------- Custom Knowledge Point ----------
-            if (metadata.customKnowledgePoint) {
-                const success = await this.addKnowledgePoint(metadata.customKnowledgePoint);
-
-                if (!success) {
-                    throw new Error('❌ Mandatory field "Knowledge Point" not filled');
+            if (metadata.knowledgePoints && metadata.knowledgePoints.length > 0) {
+                for (const kp of metadata.knowledgePoints) {
+                    Logger.info(`📝 Adding Knowledge Point: "${kp}"`);
+                    const success = await this.addKnowledgePoint(kp);
+                    if (!success) throw new Error(`Mandatory field "Knowledge Point" not filled: ${kp}`);
+                    Logger.success(`✓ Knowledge Point added: "${kp}"`);
+                    await this.browser.takeScreenshot(`knowledge_point_${kp.replace(/\s+/g, '_')}`);
+                    await this.browser.waitForTimeout(500); // small pause for UI
                 }
-
-                await this.browser.takeScreenshot('15_custom_knowledge_point_added');
-                await this.browser.waitForTimeout(1000);
             }
 
             const duration = Date.now() - startTime;
-            console.log(`✅ Metadata form filled successfully (${duration}ms)`);
+            Logger.success(`✅ Metadata form filled successfully (${duration}ms)`);
 
         } catch (error) {
-            console.error(`❌ Failed to fill metadata: ${error}`);
-            throw error;
+            Logger.error(`❌ Failed to fill metadata: ${error}`);
+            throw error; // stop execution so submitForm doesn't run if mandatory field failed
         }
     }
 
@@ -191,6 +248,139 @@ export class FormHandler {
     /**
  * Add custom Knowledge Point: Enter key point -> ADD -> enter text -> Save
  */
+    // async addKnowledgePoint(customText: string): Promise<boolean> {
+    //     const page = this.browser.getPage();
+
+    //     console.log('📌 Adding custom Knowledge Point...');
+
+    //     try {
+
+    //         // STEP 1 — Open key point dropdown
+    //         const enterKeyPoint = page.locator('span:has-text("Enter key point")');
+
+    //         await enterKeyPoint.waitFor({ state: 'visible', timeout: 5000 });
+    //         await enterKeyPoint.click();
+
+    //         console.log('  ✓ Opened "Enter key point"');
+
+    //         // STEP 2 — Click ADD
+    //         const addButton = page.locator('button:has-text("Add")');
+
+    //         await addButton.waitFor({ state: 'visible', timeout: 5000 });
+    //         await addButton.click();
+
+    //         console.log('  ✓ Clicked ADD');
+
+    //         // STEP 3 — Wait for dialog/input
+    //         const input = page.locator(
+    //             'input[placeholder*="Knowledge" i], input[name*="knowledge" i]'
+    //         ).first();
+
+    //         await input.waitFor({ state: 'visible', timeout: 5000 });
+
+    //         // STEP 4 — Fill value
+    //         await input.fill(customText);
+
+    //         console.log(`  ✓ Knowledge point text entered: ${customText}`);
+
+    //         // STEP 5 — Save
+    //         const saveButton = page
+    //             .locator('[role="dialog"]')
+    //             .locator('button:has-text("Save"):not(:has-text("Draft"))')
+    //             .first();
+
+    //         if (await saveButton.isVisible({ timeout: 3000 })) {
+
+    //             await saveButton.click();
+
+    //             console.log('  ✓ Clicked Save');
+
+    //         } else {
+
+    //             await input.press('Enter');
+
+    //             console.log('  ✓ Confirmed with Enter');
+    //         }
+
+    //         // STEP 6 — Wait for chip/tag to appear (verification)
+    //         //const createdTag = page.locator(`text=${customText}`);
+    //         //await this.verifyChip('Key Points', customText);
+
+    //         return true;
+
+    //     } catch (error) {
+
+    //         console.error(`❌ Knowledge Point creation failed: ${error}`);
+
+    //         throw new Error(
+    //             `Mandatory field "Knowledge Point" could not be filled`
+    //         );
+    //     }
+    // }
+
+    // async addKnowledgePoint(customText: string): Promise<boolean> {
+    //     const page = this.browser.getPage();
+
+    //     Logger.info('📌 Adding custom Knowledge Point...');
+
+    //     try {
+    //         // STEP 1 — Open key point dropdown
+    //         const enterKeyPoint = page.locator('span:has-text("Enter key point")');
+    //         await enterKeyPoint.waitFor({ state: 'visible', timeout: 5000 });
+    //         await enterKeyPoint.click();
+    //         Logger.success('✓ Opened "Enter key point"');
+
+    //         // STEP 2 — Click ADD
+    //         const addButton = page.locator('button:has-text("Add")');
+    //         await addButton.waitFor({ state: 'visible', timeout: 5000 });
+    //         await addButton.click();
+    //         Logger.success('✓ Clicked ADD');
+
+    //         // STEP 3 — Wait for dialog/input
+    //         const input = page.locator(
+    //             'input[placeholder*="Knowledge" i], input[name*="knowledge" i]'
+    //         ).first();
+    //         await input.waitFor({ state: 'visible', timeout: 5000 });
+
+    //         // STEP 4 — Fill value
+    //         await input.fill(customText);
+    //         Logger.success(`✓ Knowledge point text entered: ${customText}`);
+
+    //         // STEP 5 — Save
+    //         const saveButton = page
+    //             .locator('[role="dialog"]')
+    //             .locator('button:has-text("Save"):not(:has-text("Draft"))')
+    //             .first();
+
+    //         if (await saveButton.isVisible({ timeout: 3000 })) {
+    //             await saveButton.click();
+    //             Logger.success('✓ Clicked Save');
+    //         } else {
+    //             await input.press('Enter');
+    //             Logger.success('✓ Confirmed with Enter');
+    //         }
+
+    //         // STEP 6 — VERIFY that Knowledge Point actually appears
+    //         const tag = page.locator(`text=${customText}`).first();
+    //         await tag.waitFor({ state: 'visible', timeout: 5000 });
+
+    //         Logger.success(`✓ Knowledge Point verified in UI: "${customText}"`);
+
+    //         return true;
+
+    //     } catch (error) {
+    //         Logger.error(`❌ Knowledge Point creation failed: ${error}`);
+    //         return false; // return false instead of throwing, so fillMetadata can handle gracefully
+    //     }
+    // }
+
+
+    /**
+     * Add custom Knowledge Point: Enter key point -> ADD -> enter text -> Save
+     */
+    /**
+ * Add custom Knowledge Point: Enter key point -> ADD -> enter text -> Save
+ */
     async addKnowledgePoint(customText: string): Promise<boolean> {
         const page = this.browser.getPage();
 
@@ -260,6 +450,8 @@ export class FormHandler {
             );
         }
     }
+
+
 
     async verifyChip(fieldLabel: string, text: string) {
         const page = this.browser.getPage();

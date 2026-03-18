@@ -39,7 +39,7 @@ export class Authenticator {
             if (!submitted) throw new Error('Submit button not found');
 
             // Wait for the URL to change away from /login
-            await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 10000 });
+            await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 20000 });
 
             // Verify URL contains /dashboard
             await page.waitForURL(/\/dashboard/, { timeout: 10000 });

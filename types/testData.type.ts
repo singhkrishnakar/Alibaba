@@ -4,6 +4,6 @@ import { MetadataConfig } from "./metadata.types";
 export interface PromptTestData {
     prompt: PromptConfig;
     expectedBaseResponsesCount: number;
-    frontierResponsesCount: number;
+    expectedFrontierResponsesCount: number;
     metadata: MetadataConfig;
 }

@@ -1,9 +1,10 @@
 // Prompt Creator - Creates and runs prompts
 import { BrowserManager } from '../browser/browserManager';
 import { PromptTestData } from '../../types/testData.type';
+import { PromptCreatorPage } from '../pages/promptCreatorPage';
 
-export class PromptCreator {
-    constructor(private browser: BrowserManager) { }
+export class PromptCreatorService {
+    constructor(private browser: BrowserManager, private promptCreator: PromptCreatorPage) { }
 
     async createPrompt(testData: PromptTestData, abortOnFailure = true): Promise<boolean> {
 
@@ -198,4 +199,14 @@ export class PromptCreator {
         }
     }
 
+    async createPrompt1(data: any): Promise<boolean> {
+
+    await this.promptCreator.navigateToCreatePrompt(data.baseUrl)
+
+    await this.promptCreator.fillPromptForm(data)
+
+    await this.promptCreator.submitPrompt()
+
+    return await this.promptCreator.isPromptCreated()
+  }
 }

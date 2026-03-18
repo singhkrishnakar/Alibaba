@@ -4,26 +4,24 @@ import { BrowserManager } from "../browser/browserManager";
 import { Authenticator } from "../auth/authenticator";
 import { SessionValidator } from "../auth/sessionManager";
 
-import { PromptOrchestrator } from "../orchestrators/promptOrchestrator";
-import { ReviewOrchestrator } from "../orchestrators/reviewOrchestrator";
-import { WorkbenchOrchestrator } from "../orchestrators/workbenchOrchestrator";
-import { ProjectDetailOrchestrator } from "../orchestrators/projectDetailOrchestration";
-
 import { WorkbenchMenu } from "../pages/workbenchMenu";
 import { WorkbenchPage } from "../pages/workbenchPage";
 import { ProjectDetailPage } from "../pages/projectDetailPage";
+import { PromptCreatorPage } from "../pages/promptCreatorPage";
+import { ReviewAndSubmitForm } from "../pages/reviewAndSubmitForm";
 
 import { FormHandler } from "../services/formHandler";
 import { NavigationService } from "../services/navigationService";
 import { ProjectSelector } from "../services/projectSelector";
-import { PromptCreator } from "../services/promptCreator";
 import { ResponseEvaluator } from "../services/responseEvaluator";
+import { WorkbenchService } from "../services/workbenchService";
 
 import {fileManager} from "../../config/fileManager"
 import { FilterService } from "../services/filterService";
 import { PromptValidationService } from "../services/promptValidationService";
 import { ExportService } from "../services/exportService";
 import { PromptExportParser } from "../services/promptExportParser";
+import { PromptCreatorService } from "../services/promptCreatorService";
 
 export class TestContext {
 
@@ -64,9 +62,9 @@ export class TestContext {
         return this._projectSelector ??= new ProjectSelector(this.browser)
     }
 
-    private _promptCreator?: PromptCreator
+    private _promptCreator?: PromptCreatorService
     get promptCreator() {
-        return this._promptCreator ??= new PromptCreator(this.browser)
+        return this._promptCreator ??= new PromptCreatorService(this.browser, this.promptCreationPage)
     }
 
     private _responseEvaluator?: ResponseEvaluator
@@ -105,6 +103,11 @@ export class TestContext {
         return this._promptExportParser ??= new PromptExportParser()
     }
 
+    private _workbenchService?: WorkbenchService
+    get workbenchService() {
+        return this._workbenchService ??= new WorkbenchService(this)
+    }
+
     // ---------- PAGES ----------
 
     private _workbenchMenu?: WorkbenchMenu
@@ -122,26 +125,15 @@ export class TestContext {
         return this._projectDetailPage ??= new ProjectDetailPage(this)
     }
 
+    private _promptCreatorPage?: PromptCreatorPage
+    get promptCreationPage() {
+        return this._promptCreatorPage ??= new PromptCreatorPage(this)
+    }
+
+    private _reviewAndSubmitForm?: ReviewAndSubmitForm
+    get reviewAndSubmitForm() {
+        return this._reviewAndSubmitForm ??= new ReviewAndSubmitForm(this)
+    }
+
     // ---------- ORCHESTRATORS ----------
-
-    private _workbenchOrchestrator?: WorkbenchOrchestrator
-    get workbenchOrchestrator() {
-        return this._workbenchOrchestrator ??= new WorkbenchOrchestrator(this)
-    }
-
-    private _promptOrchestrator?: PromptOrchestrator
-    get promptOrchestrator() {
-        return this._promptOrchestrator ??= new PromptOrchestrator(this)
-    }
-
-    private _reviewOrchestrator?: ReviewOrchestrator
-    get reviewOrchestrator() {
-        return this._reviewOrchestrator ??= new ReviewOrchestrator(this)
-    }
-
-    private _projectDetailOrchestrator?: ProjectDetailOrchestrator
-    get projectDetailOrchestrator() {
-        return this._projectDetailOrchestrator ??= new ProjectDetailOrchestrator(this)
-    }
-
 }

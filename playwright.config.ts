@@ -32,7 +32,7 @@ export default defineConfig({
                 storageState: 'playwright/.auth/user.json'
             },
 
-            testMatch: /tests\/project\/.*/
+            testMatch: /tests\/(project|alibaba)\/.*/
         },
 
         // API Tests (NO UI LOGIN)
