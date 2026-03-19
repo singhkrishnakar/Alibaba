@@ -1,10 +1,9 @@
-import { PromptConfig } from "./prompt.types";
 import { MetadataConfig } from "./metadata.types";
 import { ExpectedPromptResponse } from "./expectedPromptResponse.type";
+import { prompts } from "../data/prompts/prompts";
 
 export interface PromptTestData {
-    id: string; // 🔥 KEY (important)
-    prompt: PromptConfig;
+    id: keyof typeof prompts & string;
     expectedResponse: ExpectedPromptResponse;
     expectedBaseResponsesCount: number;
     expectedFrontierResponsesCount: number;

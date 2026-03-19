@@ -3,7 +3,7 @@ import { BrowserManager } from "../browser/browserManager";
 
 import { Authenticator } from "../auth/authenticator";
 
-import { WorkbenchMenu } from "../pages/workbenchMenu";
+import { DashboardKebabMenu } from "../pages/dashboardKebabMenu";
 import { WorkbenchPage } from "../pages/workbenchPage";
 import { ProjectDetailPage } from "../pages/projectDetailPage";
 import { PromptCreatorPage } from "../pages/promptCreatorPage";
@@ -21,6 +21,7 @@ import { PromptValidationService } from "../services/promptValidationService";
 import { ExportService } from "../services/exportService";
 import { PromptExportParser } from "../services/promptExportParser";
 import { PromptCreatorService } from "../services/promptCreatorService";
+import { ReviewFormService } from "../services/reviewFormService"
 
 import { SessionValidator } from '../auth/sessionManager';
 import { UserSessionManager } from '../auth/sessionManager';
@@ -72,7 +73,7 @@ export class TestContext {
 
     private _promptCreator?: PromptCreatorService
     get promptCreator() {
-        return this._promptCreator ??= new PromptCreatorService(this.browser, this.promptCreationPage)
+        return this._promptCreator ??= new PromptCreatorService(this.browser, this.promptCreatorPage)
     }
 
     private _responseEvaluator?: ResponseEvaluator
@@ -88,7 +89,7 @@ export class TestContext {
     private _navigationService?: NavigationService
     get navigationService() {
         return this._navigationService ??=
-            new NavigationService(this.browser, this.projectSelector, this.workbenchMenu)
+            new NavigationService(this.browser, this.projectSelector, this.dashboardKebabMenu)
     }
 
     private _filterService?: FilterService
@@ -116,11 +117,16 @@ export class TestContext {
         return this._workbenchService ??= new WorkbenchService(this)
     }
 
+    private _reviewFormService?: ReviewFormService
+    get reviewFormService() {
+        return this._reviewFormService ??= new ReviewFormService(this.browser, this.reviewAndSubmitForm )
+    }
+
     // ---------- PAGES ----------
 
-    private _workbenchMenu?: WorkbenchMenu
-    get workbenchMenu() {
-        return this._workbenchMenu ??= new WorkbenchMenu(this)
+    private _dashboardKebabMenu?: DashboardKebabMenu
+    get dashboardKebabMenu() {
+        return this._dashboardKebabMenu ??= new DashboardKebabMenu(this)
     }
 
     private _workbenchPage?: WorkbenchPage
@@ -134,7 +140,7 @@ export class TestContext {
     }
 
     private _promptCreatorPage?: PromptCreatorPage
-    get promptCreationPage() {
+    get promptCreatorPage() {
         return this._promptCreatorPage ??= new PromptCreatorPage(this)
     }
 

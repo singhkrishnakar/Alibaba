@@ -2,6 +2,7 @@ import { TestContext } from '../core/TestContext';
 import { PromptTestData } from "../../types/testData.type";
 import { Logger } from '../utils/Logger';
 import { AutomationConfig } from '../../config/config';
+import { prompts } from '../../data/prompts/prompts';
 export class ExportPromptOrchestrator {
 
   private context: TestContext
@@ -44,17 +45,18 @@ export class ExportPromptOrchestrator {
       Logger.info("Exporting prompts")
 
       const filePath = await ctx.projectDetailPage.exportPrompts("json")
+      const promptConfig = prompts[testData.id];
 
       await ctx.exportService.verifyExport(filePath)
 
       const prompt = await ctx.promptExportParser.getPromptFromExport(
         filePath,
-        testData.prompt.promptText
+        promptConfig.promptText
       )
 
       ctx.promptValidationService.verifyPromptFields(prompt, {
         question_type: testData.metadata.questionType,
-        input_text: testData.prompt.promptText,
+        input_text: promptConfig.promptText,
         solution_process: testData.metadata.solutionProcess,
         thinking_process: testData.metadata.thinkingProcess,
         final_answer: testData.metadata.finalAnswer,

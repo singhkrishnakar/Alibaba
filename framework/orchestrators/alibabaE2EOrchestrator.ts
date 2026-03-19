@@ -49,11 +49,13 @@ export class AlibabaE2EValidation {
                 this.config.project.projectUrl
             )
 
-            await ctx.workbenchMenu.waitForLoader()
+            await ctx.dashboardKebabMenu.waitForLoader()
 
-            await ctx.workbenchMenu.launch()
+            await ctx.dashboardKebabMenu.launch()
 
-            await ctx.promptCreationPage.createPrompt(testData)
+            await ctx.promptCreator.createPrompt(testData)
+
+            await ctx.promptCreator.runPrompt()
 
             await ctx.workbenchService.verifyNavigation(testData)
 
@@ -88,7 +90,7 @@ export class AlibabaE2EValidation {
                 throw new Error("Frontier not gets enabled")
             }
 
-            await ctx.reviewAndSubmitForm.submitReview(testData.metadata)
+            await ctx.reviewFormService.reviewAndSubmit(testData)
 
             const totalDuration = ((Date.now() - totalStart) / 1000).toFixed(1)
 

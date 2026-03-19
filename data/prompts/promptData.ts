@@ -6,17 +6,37 @@ import { expectedResponse } from "./expectedResponse";
 export const promptData: PromptTestData[] = [
 
     {
-        id: "helloPrompt",
+    id: "simpleGreeting",
 
-        prompt: prompts.helloPrompt,
+    expectedResponse: expectedResponse.simpleGreeting,
 
-        expectedResponse: expectedResponse.simpleGreeting,
+    expectedBaseResponsesCount: 5,
 
-        expectedBaseResponsesCount: 5,
+    expectedFrontierResponsesCount: 10,
 
-        expectedFrontierResponsesCount: 10,
+    metadata: metadata.chemistryUndergrad
+},
+// {
+//     id: "helloPrompt",
 
-        metadata: metadata.chemistryUndergrad
-    }
+//     expectedResponse: expectedResponse.helloPrompt,
+
+//     expectedBaseResponsesCount: 5,
+
+//     expectedFrontierResponsesCount: 10,
+
+//     metadata: metadata.chemistryUndergrad
+// },
+// {
+//     id: "modelFailingPrompt",
+
+//     expectedResponse: expectedResponse.modelFailingPrompt,
+
+//     expectedBaseResponsesCount: 5,
+
+//     expectedFrontierResponsesCount: 10,
+
+//     metadata: metadata.chemistryUndergrad
+// }
 
 ];

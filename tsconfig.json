@@ -15,6 +15,6 @@
     "sourceMap": true,
     "types": ["node", "@playwright/test"]
   },
-  "include": ["*.ts", "config/config.ts", "framework/auth/authenticator.ts", "framework/browser/browserManager.ts", "framework/pages/workbenchPage.ts", "framework/services/formHandler.ts", "framework/services/workbenchService.ts", "framework/services/projectSelector.ts", "framework/pages/workbenchMenu.ts", "scripts/debug.ts", "scripts/debug_login.ts"],
+  "include": ["*.ts", "config/config.ts", "framework/auth/authenticator.ts", "framework/browser/browserManager.ts", "framework/pages/workbenchPage.ts", "framework/services/formHandler.ts", "framework/services/workbenchService.ts", "framework/services/projectSelector.ts", "framework/pages/dashboardKebabMenu.ts", "scripts/debug.ts", "scripts/debug_login.ts"],
   "exclude": ["node_modules"]
 }

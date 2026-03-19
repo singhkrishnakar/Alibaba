@@ -1,69 +1,69 @@
-import { FormHandler } from "../services/formHandler";
-import { BrowserManager } from "../browser/browserManager";
-import { TestContext } from "../core/TestContext";
-import { PromptTestData } from "../../types/testData.type";
-import { Logger } from '../utils/Logger';
-import { MetadataConfig } from "../../types/metadata.types";
+import { expect } from '@playwright/test';
+import { TestContext } from '../core/TestContext';
+import { BasePage } from './basePage';
+import { FormFields } from './FormFields';  // ← same import, different root scope
 
+export class ReviewAndSubmitForm extends BasePage {
+    private context: TestContext;
 
-export class ReviewAndSubmitForm {
-
-    private context: TestContext
+    /**
+     * Shared form fields scoped to the modal container only.
+     * Same FormFields class, different root — locators won't leak to page behind.
+     */
+    readonly fields: FormFields;
 
     constructor(context: TestContext) {
-        this.context = context
+        super(context.browser);
+        this.context = context;
+        this.fields = new FormFields(
+            this.page().locator('div.sc-2e6de984-4'),  // modal body only
+            this.page()
+        );
     }
 
-    async submitReview(metadata: MetadataConfig) {
+    // ─────────────────────────────────────────
+    // LOCATORS — unique to this modal only
+    // ─────────────────────────────────────────
 
-        const opened = await this.context.formHandler.clickSubmitToOpenReviewForm();
-
-        if (!opened) {
-            console.warn("Review form not opened");
-        }
-
-        await this.context.formHandler.fillMetadata(metadata);
-
-        await this.context.formHandler.submitForm();
-
-        await this.context.formHandler.waitForSubmissionConfirmation();
-
-        await this.context.formHandler.waitForRedirectToCreationPage();
+    get modal() {
+        return this.page().locator('div.sc-2e6de984-1');
     }
 
-    async reviewAndSubmit(testData: PromptTestData) {
-        console.log('📝 Submitting Review and Metadata...');
+    get modalTitle() {
+        return this.page().locator('h5.sc-2e6de984-3');
+    }
 
-        // Step 8: Click Submit to open "Review and Submit models" form
-        const opened = await this.context.formHandler.clickSubmitToOpenReviewForm();
-        if (!opened) {
-            console.warn('⚠ Could not open Review form, trying to fill anyway...');
-        }
+    get cancelButton() {
+        return this.page().locator('div.sc-2e6de984-6 button.btn-tertiary');
+    }
 
-        // Give UI time to render
-        await this.context.browser.waitForTimeout(2000);
+    get submitButton() {
+        return this.page().locator('div.sc-2e6de984-6 button.btn-primary');
+    }
+
+    // ─────────────────────────────────────────
+    // ACTIONS — unique to this modal only
+    // ─────────────────────────────────────────
+
+    async openModal(): Promise<void> {
+        await this.context.browser.getPage()
+            .locator('button:has-text("Submit")')
+            .click();
+        await this.modal.waitFor({ state: 'visible', timeout: 8000 });
         await this.context.browser.takeScreenshot('09_review_form_opened');
+    }
 
-        // Wait for "Final Answer" field to appear
-        try {
-            const page = this.context.browser.getPage();
-            await page.waitForSelector('text=Final Answer', { timeout: 8000 }).catch(() => { });
-        } catch {
-            console.warn('⚠ Final Answer field not visible, proceeding anyway');
-        }
+    async submit(): Promise<void> {
+        await this.submitButton.waitFor({ state: 'visible', timeout: 5000 });
+        await this.submitButton.click();
+        await this.context.browser.takeScreenshot('11_submitted');
+    }
 
-        // Step 9: Fill metadata
-        await this.context.formHandler.fillMetadata(testData.metadata);
-        await this.context.browser.takeScreenshot('10_metadata_filled');
+    async cancel(): Promise<void> {
+        await this.cancelButton.click();
+    }
 
-        // Step 11: Submit the form
-        await this.context.formHandler.submitForm();
-        await this.context.browser.takeScreenshot('12_form_submitted');
-
-        // Wait for confirmation & redirect
-        await this.context.formHandler.waitForSubmissionConfirmation();
-        await this.context.formHandler.waitForRedirectToCreationPage();
-
-        console.log('✅ Review and Submit completed');
+    async waitForCompletion(): Promise<void> {
+        await this.modal.waitFor({ state: 'hidden', timeout: 15000 });
     }
 }
