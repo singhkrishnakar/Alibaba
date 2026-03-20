@@ -1,7 +1,121 @@
 [
   {
-    "prompt_id": 60,
-    "uuid": "e27c0d97-ff70-4924-a787-a2b6099d0eea",
+    "prompt_id": 2,
+    "uuid": "ebc120fa-835d-40c7-800d-5560492fcb60",
+    "turn": 1,
+    "question_type": "multiple-choice",
+    "input_text": "solve 1+1",
+    "solution_process": "s",
+    "thinking_process": "",
+    "final_answer": "2",
+    "incorrect_responses": [
+      1
+    ],
+    "shuffled_options": "A. 1,B. 2",
+    "answer_unit": "s",
+    "knowledge_points": [
+      "d"
+    ],
+    "status": "Submitted",
+    "model_response": [
+      {
+        "data": {
+          "id": 1,
+          "content": "To solve the expression **1 + 1**, we apply the fundamental principles of arithmetic in the decimal (base-10) number system.\n\n---\n\n### Step-by-Step Reasoning:\n\n- **Addition** is the process of combining two or more numbers to find their total.\n- In this case, we are adding **1** and **1**.\n- When you have **one unit** and add **another unit**, the result is **two units**.\n- This is one of the most basic facts in arithmetic and forms the foundation of all numerical operations.\n\n---\n\n### Evaluating the Options:\n\n- **Option a: 1** — This would imply that adding 1 to 1 results in no change, which contradicts the definition of addition.\n- **Option b: 2** — This aligns with the correct result of **1 + 1 = 2**.\n\nThere is no indication of a special context (such as modular arithmetic, binary, or symbolic logic), so we assume standard arithmetic.\n\n---\n\n### Final Answer:\n\n$$\n\\boxed{b}\n$$",
+          "reasoning_content": "",
+          "mark_incorrect": true
+        },
+        "model": {
+          "id": 263,
+          "name": "qwen3-235b-a22b-thinking-2507"
+        }
+      },
+      {
+        "data": {
+          "id": 2,
+          "content": "The problem asks to solve $1 + 1$, a basic arithmetic operation. In standard base-10 arithmetic:\n\n$$\n1 + 1 = 2\n$$\n\nThis result is consistent with fundamental mathematical principles and real-world analogies (e.g., one object plus another object equals two objects). The provided options are:\n- a. 1  \n- b. 2  \n\nSince $1 + 1$ unambiguously equals **2** in this context, the correct answer is:\n\n**b. 2**  \n\n$$\n\\boxed{b}\n$$",
+          "reasoning_content": "",
+          "mark_incorrect": false
+        },
+        "model": {
+          "id": 263,
+          "name": "qwen3-235b-a22b-thinking-2507"
+        }
+      }
+    ],
+    "benchmark_model_response": [
+      {
+        "data": {
+          "content": "The answer is **b. 2**.",
+          "reasoning_content": "",
+          "mark_incorrect": false
+        },
+        "benchmark_model": {
+          "id": 286,
+          "name": "gemini-2.5-pro"
+        }
+      },
+      {
+        "data": {
+          "content": "The correct answer is b. 2.",
+          "reasoning_content": "",
+          "mark_incorrect": false
+        },
+        "benchmark_model": {
+          "id": 283,
+          "name": "o4-mini"
+        }
+      },
+      {
+        "data": {
+          "content": "1 + 1 = 2\n\nThe correct option is **b**.",
+          "reasoning_content": "",
+          "mark_incorrect": true
+        },
+        "benchmark_model": {
+          "id": 286,
+          "name": "gemini-2.5-pro"
+        }
+      },
+      {
+        "data": {
+          "content": "The correct answer is b. 2.",
+          "reasoning_content": "",
+          "mark_incorrect": true
+        },
+        "benchmark_model": {
+          "id": 283,
+          "name": "o4-mini"
+        }
+      }
+    ],
+    "media_link": [],
+    "frontier_model_correct_answer": 2,
+    "breaks_model": "Yes",
+    "pillar": {
+      "name": ""
+    },
+    "category": {
+      "name": ""
+    },
+    "level": {
+      "name": "Undergraduate"
+    },
+    "discipline": {
+      "name": "Organic Chemistry"
+    },
+    "no_unit_required": false,
+    "start_time": "2026-03-20 14:43:14",
+    "end_time": "2026-03-20 14:44:36",
+    "created_by": {
+      "uid": 19,
+      "name": "Krishnakar Singh",
+      "email": "pzr@innodata.com"
+    }
+  },
+  {
+    "prompt_id": 3,
+    "uuid": "b5a74bc8-5aeb-4be5-aaf5-78c8aaa57518",
     "turn": 1,
     "question_type": "essay-style",
     "input_text": "Just say hi.",
@@ -10,8 +124,9 @@
     "final_answer": "The answer is provided",
     "incorrect_responses": [],
     "shuffled_options": "",
-    "answer_unit": "",
+    "answer_unit": "N/A",
     "knowledge_points": [
+      "Physics",
       "Physics"
     ],
     "status": "Submitted",
@@ -21,7 +136,7 @@
           "id": 1,
           "content": "hi",
           "reasoning_content": "",
-          "mark_incorrect": true
+          "mark_incorrect": false
         },
         "model": {
           "id": 263,
@@ -39,42 +154,6 @@
           "id": 263,
           "name": "qwen3-235b-a22b-thinking-2507"
         }
-      },
-      {
-        "data": {
-          "id": 3,
-          "content": "hi",
-          "reasoning_content": "",
-          "mark_incorrect": false
-        },
-        "model": {
-          "id": 263,
-          "name": "qwen3-235b-a22b-thinking-2507"
-        }
-      },
-      {
-        "data": {
-          "id": 4,
-          "content": "hi",
-          "reasoning_content": "",
-          "mark_incorrect": false
-        },
-        "model": {
-          "id": 263,
-          "name": "qwen3-235b-a22b-thinking-2507"
-        }
-      },
-      {
-        "data": {
-          "id": 5,
-          "content": "hi",
-          "reasoning_content": "",
-          "mark_incorrect": false
-        },
-        "model": {
-          "id": 263,
-          "name": "qwen3-235b-a22b-thinking-2507"
-        }
       }
     ],
     "benchmark_model_response": [
@@ -82,51 +161,18 @@
         "data": {
           "content": "Hi!",
           "reasoning_content": "",
-          "mark_incorrect": true
-        },
-        "benchmark_model": {
-          "id": 283,
-          "name": "o4-mini"
-        }
-      },
-      {
-        "data": {
-          "content": "Hi there.",
-          "reasoning_content": "",
-          "mark_incorrect": true
-        },
-        "benchmark_model": {
-          "id": 286,
-          "name": "gemini-2.5-pro"
-        }
-      },
-      {
-        "data": {
-          "content": "Hi!",
-          "reasoning_content": "",
-          "mark_incorrect": true
-        },
-        "benchmark_model": {
-          "id": 283,
-          "name": "o4-mini"
-        }
-      },
-      {
-        "data": {
-          "content": "Hello",
-          "reasoning_content": "",
-          "mark_incorrect": true
-        },
-        "benchmark_model": {
-          "id": 286,
-          "name": "gemini-2.5-pro"
-        }
-      },
-      {
-        "data": {
-          "content": "Hi!",
-          "reasoning_content": "",
           "mark_incorrect": false
+        },
+        "benchmark_model": {
+          "id": 283,
+          "name": "o4-mini"
+        }
+      },
+      {
+        "data": {
+          "content": "Hi!",
+          "reasoning_content": "",
+          "mark_incorrect": true
         },
         "benchmark_model": {
           "id": 283,
@@ -153,44 +199,11 @@
         "benchmark_model": {
           "id": 286,
           "name": "gemini-2.5-pro"
-        }
-      },
-      {
-        "data": {
-          "content": "Hi!",
-          "reasoning_content": "",
-          "mark_incorrect": false
-        },
-        "benchmark_model": {
-          "id": 283,
-          "name": "o4-mini"
-        }
-      },
-      {
-        "data": {
-          "content": "Hi there",
-          "reasoning_content": "",
-          "mark_incorrect": false
-        },
-        "benchmark_model": {
-          "id": 286,
-          "name": "gemini-2.5-pro"
-        }
-      },
-      {
-        "data": {
-          "content": "Hi!",
-          "reasoning_content": "",
-          "mark_incorrect": false
-        },
-        "benchmark_model": {
-          "id": 283,
-          "name": "o4-mini"
         }
       }
     ],
     "media_link": [],
-    "frontier_model_correct_answer": 6,
+    "frontier_model_correct_answer": 3,
     "breaks_model": "Yes",
     "pillar": {
       "name": ""
@@ -204,9 +217,9 @@
     "discipline": {
       "name": "Organic Chemistry"
     },
-    "no_unit_required": true,
-    "start_time": "2026-03-18 09:48:07",
-    "end_time": "2026-03-18 09:49:39",
+    "no_unit_required": false,
+    "start_time": "2026-03-20 14:57:12",
+    "end_time": "2026-03-20 14:58:33",
     "created_by": {
       "uid": 19,
       "name": "Krishnakar Singh",
@@ -214,8 +227,8 @@
     }
   },
   {
-    "prompt_id": 61,
-    "uuid": "46c79e4e-7b13-4129-8ede-13a317d5f342",
+    "prompt_id": 4,
+    "uuid": "51236e5c-c352-4b6d-870b-238175b8b4d9",
     "turn": 1,
     "question_type": "essay-style",
     "input_text": "Just say hi.",
@@ -224,7 +237,7 @@
     "final_answer": "The answer is provided",
     "incorrect_responses": [],
     "shuffled_options": "",
-    "answer_unit": "",
+    "answer_unit": "N/A",
     "knowledge_points": [
       "Physics"
     ],
@@ -235,7 +248,7 @@
           "id": 1,
           "content": "hi",
           "reasoning_content": "",
-          "mark_incorrect": true
+          "mark_incorrect": false
         },
         "model": {
           "id": 263,
@@ -245,45 +258,9 @@
       {
         "data": {
           "id": 2,
-          "content": "hi.",
+          "content": "hi",
           "reasoning_content": "",
           "mark_incorrect": true
-        },
-        "model": {
-          "id": 263,
-          "name": "qwen3-235b-a22b-thinking-2507"
-        }
-      },
-      {
-        "data": {
-          "id": 3,
-          "content": "hi",
-          "reasoning_content": "",
-          "mark_incorrect": false
-        },
-        "model": {
-          "id": 263,
-          "name": "qwen3-235b-a22b-thinking-2507"
-        }
-      },
-      {
-        "data": {
-          "id": 4,
-          "content": "hi",
-          "reasoning_content": "",
-          "mark_incorrect": false
-        },
-        "model": {
-          "id": 263,
-          "name": "qwen3-235b-a22b-thinking-2507"
-        }
-      },
-      {
-        "data": {
-          "id": 5,
-          "content": "hi",
-          "reasoning_content": "",
-          "mark_incorrect": false
         },
         "model": {
           "id": 263,
@@ -292,6 +269,17 @@
       }
     ],
     "benchmark_model_response": [
+      {
+        "data": {
+          "content": "Hi!",
+          "reasoning_content": "",
+          "mark_incorrect": false
+        },
+        "benchmark_model": {
+          "id": 283,
+          "name": "o4-mini"
+        }
+      },
       {
         "data": {
           "content": "Hi!",
@@ -307,88 +295,11 @@
         "data": {
           "content": "Hi there",
           "reasoning_content": "",
-          "mark_incorrect": true
-        },
-        "benchmark_model": {
-          "id": 286,
-          "name": "gemini-2.5-pro"
-        }
-      },
-      {
-        "data": {
-          "content": "Hi!",
-          "reasoning_content": "",
-          "mark_incorrect": true
-        },
-        "benchmark_model": {
-          "id": 283,
-          "name": "o4-mini"
-        }
-      },
-      {
-        "data": {
-          "content": "Hi",
-          "reasoning_content": "",
           "mark_incorrect": false
         },
         "benchmark_model": {
           "id": 286,
           "name": "gemini-2.5-pro"
-        }
-      },
-      {
-        "data": {
-          "content": "Hi!",
-          "reasoning_content": "",
-          "mark_incorrect": false
-        },
-        "benchmark_model": {
-          "id": 283,
-          "name": "o4-mini"
-        }
-      },
-      {
-        "data": {
-          "content": "Hello",
-          "reasoning_content": "",
-          "mark_incorrect": true
-        },
-        "benchmark_model": {
-          "id": 286,
-          "name": "gemini-2.5-pro"
-        }
-      },
-      {
-        "data": {
-          "content": "Hello",
-          "reasoning_content": "",
-          "mark_incorrect": false
-        },
-        "benchmark_model": {
-          "id": 286,
-          "name": "gemini-2.5-pro"
-        }
-      },
-      {
-        "data": {
-          "content": "Hi!",
-          "reasoning_content": "",
-          "mark_incorrect": false
-        },
-        "benchmark_model": {
-          "id": 283,
-          "name": "o4-mini"
-        }
-      },
-      {
-        "data": {
-          "content": "Hi!",
-          "reasoning_content": "",
-          "mark_incorrect": false
-        },
-        "benchmark_model": {
-          "id": 283,
-          "name": "o4-mini"
         }
       },
       {
@@ -404,7 +315,7 @@
       }
     ],
     "media_link": [],
-    "frontier_model_correct_answer": 6,
+    "frontier_model_correct_answer": 3,
     "breaks_model": "Yes",
     "pillar": {
       "name": ""
@@ -418,9 +329,9 @@
     "discipline": {
       "name": "Organic Chemistry"
     },
-    "no_unit_required": true,
-    "start_time": "2026-03-18 10:00:20",
-    "end_time": "2026-03-18 10:01:52",
+    "no_unit_required": false,
+    "start_time": "2026-03-20 15:44:40",
+    "end_time": "2026-03-20 15:45:41",
     "created_by": {
       "uid": 19,
       "name": "Krishnakar Singh",
@@ -428,17 +339,17 @@
     }
   },
   {
-    "prompt_id": 62,
-    "uuid": "b979fef7-f856-4d1c-9fe1-4a0d5ca332c3",
+    "prompt_id": 5,
+    "uuid": "1ffe4a66-dbc2-472d-b2f8-1674748d10ec",
     "turn": 1,
     "question_type": "essay-style",
-    "input_text": "Hello",
+    "input_text": "Just say hi.",
     "solution_process": "Step by step process",
     "thinking_process": "Logical reasoning applied",
     "final_answer": "The answer is provided",
     "incorrect_responses": [],
     "shuffled_options": "",
-    "answer_unit": "",
+    "answer_unit": "N/A",
     "knowledge_points": [
       "Physics"
     ],
@@ -447,9 +358,9 @@
       {
         "data": {
           "id": 1,
-          "content": "Hello! 😊 How can I assist you today?",
+          "content": "hi",
           "reasoning_content": "",
-          "mark_incorrect": true
+          "mark_incorrect": false
         },
         "model": {
           "id": 263,
@@ -459,45 +370,9 @@
       {
         "data": {
           "id": 2,
-          "content": "Hello! 😊 How can I assist you today?",
+          "content": "hi",
           "reasoning_content": "",
           "mark_incorrect": true
-        },
-        "model": {
-          "id": 263,
-          "name": "qwen3-235b-a22b-thinking-2507"
-        }
-      },
-      {
-        "data": {
-          "id": 3,
-          "content": "Hello! 😊 How can I assist you today?",
-          "reasoning_content": "",
-          "mark_incorrect": false
-        },
-        "model": {
-          "id": 263,
-          "name": "qwen3-235b-a22b-thinking-2507"
-        }
-      },
-      {
-        "data": {
-          "id": 4,
-          "content": "Hello! 😊 How can I assist you today?",
-          "reasoning_content": "",
-          "mark_incorrect": false
-        },
-        "model": {
-          "id": 263,
-          "name": "qwen3-235b-a22b-thinking-2507"
-        }
-      },
-      {
-        "data": {
-          "id": 5,
-          "content": "Hello! 😊 How can I assist you today?",
-          "reasoning_content": "",
-          "mark_incorrect": false
         },
         "model": {
           "id": 263,
@@ -508,20 +383,9 @@
     "benchmark_model_response": [
       {
         "data": {
-          "content": "Hello! How can I help you today?",
+          "content": "Hi!",
           "reasoning_content": "",
-          "mark_incorrect": true
-        },
-        "benchmark_model": {
-          "id": 286,
-          "name": "gemini-2.5-pro"
-        }
-      },
-      {
-        "data": {
-          "content": "Hello! How can I assist you today?",
-          "reasoning_content": "",
-          "mark_incorrect": true
+          "mark_incorrect": false
         },
         "benchmark_model": {
           "id": 283,
@@ -530,29 +394,7 @@
       },
       {
         "data": {
-          "content": "Hello there! How can I help you today?",
-          "reasoning_content": "",
-          "mark_incorrect": true
-        },
-        "benchmark_model": {
-          "id": 286,
-          "name": "gemini-2.5-pro"
-        }
-      },
-      {
-        "data": {
-          "content": "Hello! How can I help you today?",
-          "reasoning_content": "",
-          "mark_incorrect": false
-        },
-        "benchmark_model": {
-          "id": 286,
-          "name": "gemini-2.5-pro"
-        }
-      },
-      {
-        "data": {
-          "content": "Hello! How can I help you today?",
+          "content": "Hi!",
           "reasoning_content": "",
           "mark_incorrect": true
         },
@@ -563,7 +405,7 @@
       },
       {
         "data": {
-          "content": "Hello there! How can I help you today?",
+          "content": "Hello",
           "reasoning_content": "",
           "mark_incorrect": false
         },
@@ -574,51 +416,18 @@
       },
       {
         "data": {
-          "content": "Hello! How can I help you today?",
-          "reasoning_content": "",
-          "mark_incorrect": false
-        },
-        "benchmark_model": {
-          "id": 283,
-          "name": "o4-mini"
-        }
-      },
-      {
-        "data": {
-          "content": "Hello there! How can I help you today?",
+          "content": "Hi there",
           "reasoning_content": "",
           "mark_incorrect": false
         },
         "benchmark_model": {
           "id": 286,
           "name": "gemini-2.5-pro"
-        }
-      },
-      {
-        "data": {
-          "content": "Hello! How can I assist you today?",
-          "reasoning_content": "",
-          "mark_incorrect": false
-        },
-        "benchmark_model": {
-          "id": 283,
-          "name": "o4-mini"
-        }
-      },
-      {
-        "data": {
-          "content": "Hello! How can I help you today?",
-          "reasoning_content": "",
-          "mark_incorrect": false
-        },
-        "benchmark_model": {
-          "id": 283,
-          "name": "o4-mini"
         }
       }
     ],
     "media_link": [],
-    "frontier_model_correct_answer": 6,
+    "frontier_model_correct_answer": 3,
     "breaks_model": "Yes",
     "pillar": {
       "name": ""
@@ -632,9 +441,9 @@
     "discipline": {
       "name": "Organic Chemistry"
     },
-    "no_unit_required": true,
-    "start_time": "2026-03-18 16:02:58",
-    "end_time": "2026-03-18 16:04:30",
+    "no_unit_required": false,
+    "start_time": "2026-03-20 16:26:25",
+    "end_time": "2026-03-20 16:27:35",
     "created_by": {
       "uid": 19,
       "name": "Krishnakar Singh",

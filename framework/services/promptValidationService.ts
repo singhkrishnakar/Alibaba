@@ -25,6 +25,10 @@ export class PromptValidationService {
       throw new Error(`final_answer mismatch`)
     }
 
+    // TEMP DEBUG — remove after fixing
+    console.log('Actual knowledge_points:', JSON.stringify(prompt.knowledge_points));
+    console.log('Expected knowledge_points:', JSON.stringify(expected.knowledge_points));
+
     if (
       JSON.stringify(prompt.knowledge_points) !==
       JSON.stringify(expected.knowledge_points)

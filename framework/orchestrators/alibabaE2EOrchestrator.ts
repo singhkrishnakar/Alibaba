@@ -1,5 +1,5 @@
 import { AutomationConfig } from "../../config/config"
-import { PromptTestData } from "../../types/testData.type";
+import { PromptTestData } from "../../types/promptTestData.type";
 import { Logger } from "../utils/Logger"
 import { TestContext } from "../core/TestContext"
 import { error } from "console";
@@ -49,46 +49,73 @@ export class AlibabaE2EValidation {
                 this.config.project.projectUrl
             )
 
-            await ctx.workbenchMenu.waitForLoader()
+            await ctx.dashboardKebabMenu.waitForLoader()
 
-            await ctx.workbenchMenu.launch()
+            await ctx.dashboardKebabMenu.launch()
 
-            await ctx.promptCreationPage.createPrompt(testData)
+            await ctx.promptCreator.createPrompt(testData)
+
+            await ctx.promptCreator.runPrompt()
 
             await ctx.workbenchService.verifyNavigation(testData)
 
-            const allBaseResponses = await ctx.workbenchService.waitForResponses(testData.expectedBaseResponsesCount)
+            // Wait for base responses
+            const allBaseResponses = await ctx.workbenchService.waitForBaseResponses
+                (
+                    testData.expectedBaseResponsesCount
+                )
 
-            if(!allBaseResponses) {
+            if (!allBaseResponses) {
                 Logger.error("Not all base responses loaded in time")
                 throw new Error("Not all base responses loaded in time")
             }
 
             await ctx.workbenchService.verifyResponses(expectedResponse)
 
-            await ctx.workbenchService.getAllResponses()
+            // Mark all base responses
+            await ctx.workbenchService.markAllBaseResponses(testData)
 
-            await ctx.responseEvaluator.mark2Incorrect3Correct()
+            // Read response count after base model responses load
+            const { actual: baseResponseCount } = await ctx.workbenchService.getResponseCount(
+                testData.expectedBaseResponsesCount
+            );
 
-            const baseResponseCount = await ctx.workbenchService.getResponseCount()
+            const responseCountAfterBaseModelResponse =
+                baseResponseCount + testData.expectedFrontierResponsesCount;
 
-            const frontierEnabled = await ctx.workbenchService.waitForFrontierEnabled()
+            console.log("---->" + baseResponseCount + responseCountAfterBaseModelResponse)
 
-            if(frontierEnabled){
-                            await ctx.workbenchService.isFrontierEnabled()
+            const frontierEnabled = await ctx.workbenchService.waitForFrontierButtonEnabled()
 
-            await ctx.workbenchService.clickFrontierButton()
+            if (frontierEnabled) {
+                await ctx.workbenchService.clickFrontierButton()
 
-            await ctx.workbenchService.waitForFrontierResponses(testData.expectedFrontierResponsesCount)
+                // Wait for frontier responses to load
+                await ctx.workbenchService.waitForFrontierResponses
+                (
+                    testData.expectedBaseResponsesCount
+                    +
+                    testData.expectedFrontierResponsesCount
+                );
 
-            await ctx.responseEvaluator.mark2Incorrect3Correct(baseResponseCount)
+                // Mark all frontier responses
+                await ctx.workbenchService.markAllFrontierResponses(testData);
 
-            }else{
+                // DEBUG: hardcoded wait — remove before merging to main
+                //await ctx.browser.waitForTimeout(20000);
+
+            } else {
                 Logger.error("Frontier failed to enabled")
                 throw new Error("Frontier not gets enabled")
             }
 
-            await ctx.reviewAndSubmitForm.submitReview(testData.metadata)
+            // Wait for submit button to enable
+            await ctx.workbenchService.waitForSubmitButtonEnabled();
+
+            // Click submit — this opens the ReviewAndSubmitForm modal
+            await ctx.workbenchPage.clickSubmit();
+
+            await ctx.reviewFormService.reviewAndSubmit(testData)
 
             const totalDuration = ((Date.now() - totalStart) / 1000).toFixed(1)
 

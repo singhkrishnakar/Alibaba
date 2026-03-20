@@ -8,6 +8,10 @@ export const expectedResponse: Record<string, ExpectedPromptResponse> = {
 
     helloPrompt: {
         expectedResponseText: "Hello"
+    },
+
+    modelFailingPrompt: {
+        expectedResponseText: "Model Error"
     }
 
 };

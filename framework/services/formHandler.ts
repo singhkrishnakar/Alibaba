@@ -96,12 +96,11 @@ export class FormHandler {
     async fillMetadata(metadata: MetadataConfig): Promise<void> {
         const page = this.browser.getPage();
         const startTime = Date.now();
-
         try {
             Logger.info('📋 Filling Review and Submit metadata form...');
 
-            // ---------- Final Answer ----------
-            if (metadata.finalAnswer) {
+            // ---------- Final Answer — essay only ----------
+            if (metadata.questionType === 'essay' && metadata.finalAnswer) {
                 Logger.info('📝 Adding Final Answer...');
                 const success = await this.addFinalAnswer(metadata.finalAnswer);
                 if (!success) throw new Error('Mandatory field "Final Answer" not filled');
@@ -133,29 +132,27 @@ export class FormHandler {
                 const checked = await this.checkNoUnitRequired();
                 await page.locator('text=Answer Unit').scrollIntoViewIfNeeded();
                 await this.browser.takeScreenshot('14_answer_unit_checked');
-
                 if (!checked) throw new Error('Mandatory field "Answer Unit" not checked');
                 Logger.success('✓ Answer Unit validated');
             }
 
-            // ---------- Custom Knowledge Point ----------
-            if (metadata.knowledgePoints && metadata.knowledgePoints.length > 0) {
+            // ---------- Knowledge Points ----------
+            if (metadata.knowledgePoints?.length > 0) {
                 for (const kp of metadata.knowledgePoints) {
                     Logger.info(`📝 Adding Knowledge Point: "${kp}"`);
                     const success = await this.addKnowledgePoint(kp);
                     if (!success) throw new Error(`Mandatory field "Knowledge Point" not filled: ${kp}`);
                     Logger.success(`✓ Knowledge Point added: "${kp}"`);
                     await this.browser.takeScreenshot(`knowledge_point_${kp.replace(/\s+/g, '_')}`);
-                    await this.browser.waitForTimeout(500); // small pause for UI
+                    await this.browser.waitForTimeout(500);
                 }
             }
 
             const duration = Date.now() - startTime;
             Logger.success(`✅ Metadata form filled successfully (${duration}ms)`);
-
         } catch (error) {
             Logger.error(`❌ Failed to fill metadata: ${error}`);
-            throw error; // stop execution so submitForm doesn't run if mandatory field failed
+            throw error;
         }
     }
 

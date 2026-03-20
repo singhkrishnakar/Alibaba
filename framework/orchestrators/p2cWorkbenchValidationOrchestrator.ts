@@ -5,7 +5,7 @@ import { TestContext } from "../core/TestContext"
 import { expectedResponse } from "../../data/prompts/expectedResponse";
 import { ExpectedPromptResponse } from "../../types/expectedPromptResponse.type";
 
-export class ResponseValidationOrchestrator {
+export class ValidatedWorkbechPageOrchestrator {
 
     private context: TestContext
     private config: AutomationConfig
@@ -55,15 +55,15 @@ export class ResponseValidationOrchestrator {
 
             await ctx.promptCreator.createPrompt(testData)
 
-            await ctx.promptCreator.runPrompt()
-
             await ctx.workbenchService.verifyNavigation(testData)
 
             const testSubset = {
                 [testData.id]: testData.expectedResponse
             };
 
-            await ctx.workbenchService.verifyResponses(testSubset);
+            const allBaseResponses = await ctx.workbenchService.verifyResponses(
+                testSubset
+            )
 
             const totalDuration = ((Date.now() - totalStart) / 1000).toFixed(1)
 

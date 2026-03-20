@@ -1,6 +1,7 @@
 import { test } from "../../framework/fixtures/projectDetail.fixture";
 import { ExportPromptsOrchestrator } from "../../framework/orchestrators/exportFilteredPromptsOrchestrator";
 import { promptData } from "../../data/prompts/promptData";
+import { PromptTestData } from "../../types/promptTestData.type";
 
 test.describe("Export Prompts Tests", () => {
 

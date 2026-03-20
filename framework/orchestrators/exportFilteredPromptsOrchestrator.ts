@@ -1,77 +1,82 @@
 import { TestContext } from '../core/TestContext';
-import { PromptTestData } from "../../types/testData.type";
+import { PromptTestData } from '../../types/promptTestData.type';
 import { Logger } from '../utils/Logger';
 import { AutomationConfig } from '../../config/config';
+import { prompts } from '../../data/prompts/prompts'; // ← ADD THIS
 
 export interface ExportOptions {
-  filterByDateRange?: { startDate: string; endDate: string };
-  format?: 'json' | 'csv';
+    filterByDateRange?: { startDate: string; endDate: string };
+    format?: 'json' | 'csv';
 }
 
 export class ExportPromptsOrchestrator {
 
-  constructor(private context: TestContext) { }
+    constructor(private context: TestContext) {}
 
-  async run(testData: PromptTestData, options?: ExportOptions) {
+    async run(testData: PromptTestData, options?: ExportOptions) {
 
-    const ctx = this.context;
-    const config = ctx.config;
+        const ctx = this.context;
+        const config = ctx.config;
 
-    Logger.info("⏱️ Starting LLM Export Automation");
-    const start = Date.now();
+        Logger.info('⏱️ Starting LLM Export Automation');
+        const start = Date.now();
 
-    try {
+        // ← ADD THIS — resolve prompt text from data file using testData.id
+        // Same pattern used in all other orchestrators in this project
+        const promptConfig = prompts[testData.id];
+        if (!promptConfig) {
+            throw new Error(
+                `No prompt config found for id: "${testData.id}". ` +
+                `Available ids: ${Object.keys(prompts).join(', ')}`
+            );
+        }
 
-      const valid = await ctx.sessionValidator.validateSession(config.project.baseUrl);
-      if (!valid) throw new Error("Session expired. Run auth.setup.ts again");
+        try {
+            const valid = await ctx.sessionValidator.validateSession(config.project.baseUrl);
+            if (!valid) throw new Error('Session expired. Run auth.setup.ts again');
 
-      await ctx.navigationService.openDashboard(config.project.baseUrl);
+            await ctx.navigationService.openDashboard(config.project.baseUrl);
 
-      await ctx.projectSelector.navigateToProject(
-        config.project.projectName,
-        config.project.baseUrl,
-        config.project.projectUrl
-      );
+            await ctx.projectSelector.navigateToProject(
+                config.project.projectName,
+                config.project.baseUrl,
+                config.project.projectUrl
+            );
 
-      await ctx.projectDetailPage.waitForPageLoad();
+            await ctx.projectDetailPage.waitForPageLoad();
 
-      // Apply filter
-      if (options?.filterByDateRange) {
+            if (options?.filterByDateRange) {
+                Logger.info('Applying Date Range filter');
+                const { startDate, endDate } = options.filterByDateRange;
+                await ctx.filterService.filterByDateRange(startDate, endDate);
+            }
 
-        Logger.info("Applying Date Range filter");
+            const filePath = await ctx.projectDetailPage.exportPrompts(options?.format || 'json');
 
-        const { startDate, endDate } = options.filterByDateRange;
+            await ctx.exportService.verifyExport(filePath);
 
-        await ctx.filterService.filterByDateRange(startDate, endDate);
-      }
+            const prompt = await ctx.promptExportParser.getPromptFromExport(
+                filePath,
+                promptConfig.promptText  // ← FIXED: was testData.prompt.promptText
+            );
 
-      const filePath = await ctx.projectDetailPage.exportPrompts(options?.format || 'json');
+            await ctx.promptValidationService.verifyPromptFields(prompt, {
+                question_type: testData.metadata.questionType,
+                input_text: promptConfig.promptText,  // ← FIXED
+                solution_process: testData.metadata.solutionProcess,
+                thinking_process: testData.metadata.thinkingProcess,
+                final_answer: testData.metadata.finalAnswer,
+                knowledge_points: testData.metadata.knowledgePoints,
+                level: testData.metadata.level,
+                discipline: testData.metadata.discipline
+            });
 
-      await ctx.exportService.verifyExport(filePath);
+            const duration = ((Date.now() - start) / 1000).toFixed(1);
+            Logger.info(`Automation completed in ${duration}s`);
 
-      const prompt = await ctx.promptExportParser.getPromptFromExport(
-        filePath,
-        testData.prompt.promptText
-      );
-
-      await ctx.promptValidationService.verifyPromptFields(prompt, {
-        question_type: testData.metadata.questionType,
-        input_text: testData.prompt.promptText,
-        solution_process: testData.metadata.solutionProcess,
-        thinking_process: testData.metadata.thinkingProcess,
-        final_answer: testData.metadata.finalAnswer,
-        knowledge_points: testData.metadata.knowledgePoints,
-        level: testData.metadata.level,
-        discipline: testData.metadata.discipline
-      });
-
-      const duration = ((Date.now() - start) / 1000).toFixed(1);
-      Logger.info(`Automation completed in ${duration}s`);
-
-    } catch (error) {
-
-      Logger.error("Automation failed");
-      throw error;
+        } catch (error) {
+            Logger.error('Automation failed');
+            throw error;
+        }
     }
-  }
 }

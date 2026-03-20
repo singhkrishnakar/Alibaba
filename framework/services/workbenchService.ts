@@ -1,21 +1,12 @@
-// Workbench Orchestrator - Handles response waiting and workbench operations
-
-import { Page } from 'playwright';
-import { AutomationConfig } from '../../config/config';
+import { expect } from '@playwright/test';
 import { TestContext } from '../core/TestContext';
-import { PromptTestData } from '../../types/testData.type';
-import { ExpectedPromptResponse } from '../../types/expectedPromptResponse.type'
+import { PromptTestData } from '../../types/promptTestData.type';
+import { ExpectedPromptResponse } from '../../types/expectedPromptResponse.type';
 import { Logger } from '../utils/Logger';
-import { ProjectDetailPage } from '../pages/projectDetailPage';
-import { ExportPromptOrchestrator } from '../orchestrators/exportPromptOrchestrator';
-import { ExpectedPromptFields } from '../../data/prompts/expectedPromptFields';
-
 
 export class WorkbenchService {
-
     constructor(private context: TestContext) { }
 
-    // ✅ Short accessors (cleaner)
     private get page() {
         return this.context.browser.getPage();
     }
@@ -24,304 +15,272 @@ export class WorkbenchService {
         return this.context.workbenchPage!;
     }
 
-    // ==================== NAVIGATION ====================
+    // ─────────────────────────────────────────
+    // NAVIGATION
+    // ─────────────────────────────────────────
 
     async verifyNavigation(testData: PromptTestData): Promise<void> {
-        console.log('🚀 Verifying navigation to workbench...');
+        Logger.info('🚀 Verifying navigation to workbench...');
 
-        const page = this.page;
-        if (!page) throw new Error('No active page');
-
-        await page.waitForURL(
+        await this.page.waitForURL(
             /\/project\/prompt\/\d+\/promptCreationWorkbench\/workbench/,
             { timeout: 20000 }
         );
 
         await Promise.all([
-            page.getByText('Workbench').first().waitFor(),
-            page.locator('#elapseTime').waitFor(),
-            page.locator(`text=/\\d+ response\\(s\\) out of ${testData.expectedBaseResponsesCount}/`)
-                .first()
-                .waitFor()
+            this.page.getByText('Workbench').first().waitFor({ timeout: 10000 }),
+            this.page.locator(
+                `div:has-text(" response(s) out of ${testData.configModelResponsesCount.baseModelResponsesCount}")`
+            ).first().waitFor({ timeout: 20000 })
         ]);
 
-        console.log('✓ Workbench ready');
+        Logger.info('✓ Workbench ready');
     }
 
-    // ==================== LOADER ====================
+    // ─────────────────────────────────────────
+    // LOADER HANDLING
+    // ─────────────────────────────────────────
 
-    async waitForLoaderToDisappear(
-        timeout = 600000,
-        pollInterval = 5000
-    ): Promise<boolean> {
-
+    async waitForLoaderToDisappear(timeout = 600000, pollInterval = 5000): Promise<boolean> {
         const start = Date.now();
 
         while (Date.now() - start < timeout) {
-
             const stillLoading = await this.page.evaluate(() => {
-                const text = document.body?.textContent?.toLowerCase() || "";
-
+                const text = document.body?.textContent?.toLowerCase() ?? '';
                 if (/generating|loading/.test(text)) return true;
-
                 const spinner = document.querySelector(
                     '.spinner, .loader, [data-loading], [aria-busy="true"]'
                 ) as HTMLElement | null;
-
                 return !!(spinner && spinner.offsetParent !== null);
             });
 
             if (!stillLoading) {
-                console.log('✓ Loader gone');
+                console.log('  ✓ Loader gone');
                 return true;
             }
 
             await this.context.browser.waitForTimeout(pollInterval);
         }
 
-        console.warn('⚠ Loader timeout');
+        console.warn('  ⚠ Loader timeout');
         return false;
     }
 
-    // ==================== RESPONSES ====================
+    // ─────────────────────────────────────────
+    // WAITING FOR RESPONSES
+    // ─────────────────────────────────────────
 
-    async waitForResponses(
+    async waitForBaseResponses(expectedCount: number, timeout = 600000): Promise<boolean> {
+        Logger.info(`⏳ Waiting for ${expectedCount} base responses...`);
+        return this.pollForResponseCount(expectedCount, timeout, 'base');
+    }
+
+    async waitForFrontierResponses(expectedCount: number, timeout = 600000): Promise<boolean> {
+        Logger.info(`⏳ Waiting for ${expectedCount} frontier responses...`);
+        return this.pollForResponseCount(expectedCount, timeout, 'frontier');
+    }
+
+    private async pollForResponseCount(
         expectedCount: number,
-        timeout = 600000
+        timeout: number,
+        type: 'base' | 'frontier'
     ): Promise<boolean> {
-
-        console.log(`⏳ Waiting for ${expectedCount} responses...`);
-
         const start = Date.now();
         let lastCount = 0;
 
         while (Date.now() - start < timeout) {
-
             await this.waitForLoaderToDisappear(5000);
 
-            const count = await this.workbenchPage.getResponseCount().catch(() => 0);
+            const { actual } = await this.workbenchPage.getResponseCountFromUI(expectedCount);
 
-            if (count > lastCount) {
-                console.log(`  ✓ ${count}/${expectedCount}`);
-                lastCount = count;
+            if (actual > lastCount) {
+                console.log(`  ✓ ${actual}/${expectedCount} responses loaded`);
+                lastCount = actual;
             }
 
-            if (count >= expectedCount) {
-                console.log('✓ All responses ready');
+            if (actual >= expectedCount) {
+                Logger.info(`✓ All ${type} responses ready`);
                 return true;
             }
 
             await this.context.browser.waitForTimeout(3000);
         }
 
-        console.warn(`⚠ Timeout: ${lastCount}/${expectedCount}`);
+        console.warn(`  ⚠ Timeout: only ${lastCount}/${expectedCount} responses loaded`);
         return false;
     }
 
-    async waitForResponsesWithVerification(
-        expectedCount: number,
-        expectedResponses: Record<string, ExpectedPromptResponse>,
-        timeout = 600000
-    ): Promise<boolean> {
-
-        console.log(`⏳ Waiting for ${expectedCount} responses...`);
-
-        const start = Date.now();
-        let lastCount = 0;
-
-        while (Date.now() - start < timeout) {
-
-            await this.waitForLoaderToDisappear(5000);
-
-            const count = await this.workbenchPage.getResponseCount().catch(() => 0);
-
-            if (count > lastCount) {
-                console.log(`  ✓ ${count}/${expectedCount}`);
-                lastCount = count;
-            }
-
-            if (count >= expectedCount) {
-                console.log('✓ All responses ready');
-                return true;
-            }
-
-            await this.context.browser.waitForTimeout(3000);
-
-            await this.verifyResponsesLive(expectedCount, expectedResponses);
-        }
-
-        console.warn(`⚠ Timeout: ${lastCount}/${expectedCount}`);
-        return false;
+    async getResponseCount(expectedCount: number): Promise<{ actual: number; expected: number }> {
+        return this.workbenchPage.getResponseCountFromUI(expectedCount);
     }
 
-    async getAllResponses(): Promise<string[]> {
-        const responses = await this.workbenchPage.getAllResponseTexts();
+    // ─────────────────────────────────────────
+    // MARKING RESPONSES
+    // The status passed here applies to ALL responses of that type.
+    // In a real scenario you'd pass per-response expected values from testData.
+    // ─────────────────────────────────────────
 
-        console.log(`📖 ${responses.length} responses fetched`);
+    /**
+    * Marks base responses using the marking map from testData.
+    * Falls back to marking all as the given default status if no map provided.
+    * 
+    * @param testData   - Full test data object containing workbenchMarking config
+    * @param defaultStatus - Used when workbenchMarking is not defined in testData
+    */
+    async markAllBaseResponses(
+        testData: PromptTestData,
+        defaultStatus: 'Correct' | 'Incorrect' = 'Correct'
+    ): Promise<void> {
+        Logger.info('📝 Marking base responses...');
 
-        return responses;
-    }
+        const indexes = await this.workbenchPage.getBaseResponseNameIndexes();
 
-    async getResponseCount(): Promise<number> {
-        return this.workbenchPage.getResponseCount();
-    }
-
-    async verifyResponses(expectedResponses: Record<string, ExpectedPromptResponse>): Promise<void> {
-        const page = this.page;
-        if (!page) throw new Error("No active page");
-
-        console.log("🕵️ Verifying LLM responses...");
-
-        const responseWrappers = page.locator('div.sc-6e40ec64-18.ezXOtW');
-        const count = await responseWrappers.count();
-
-        if (count === 0) {
-            console.warn("⚠ No responses found — skipping validation");
+        if (indexes.length === 0) {
+            console.warn('  ⚠ No base response radio buttons found');
             return;
         }
 
-        const actualResponses: string[] = [];
+        const markingMap = testData.workbenchMarking?.baseResponses;
 
-        for (let i = 0; i < count; i++) {
-            const wrapper = responseWrappers.nth(i);
-            const responseText = await wrapper.locator('div.sc-6e40ec64-22.bkcbqC p').textContent();
-            const cleanText = responseText?.trim() || "";
-
-            // ✅ SINGLE LINE HANDLING
-            if (this.handleModelError(cleanText, `response ${i + 1}`)) return;
-
-            actualResponses.push(cleanText);
+        for (const index of indexes) {
+            // Use marking map if provided, otherwise fall back to defaultStatus
+            const status = markingMap?.[index] ?? defaultStatus;
+            await this.workbenchPage.markBaseResponse(index, status);
         }
 
-        const expectedTexts = Object.values(expectedResponses).map(r => r.expectedResponseText);
-
-        for (const expectedText of expectedTexts) {
-            const found = actualResponses.some(actual => actual.includes(expectedText));
-
-            if (!found) {
-                console.warn(`⚠ Expected response NOT found: "${expectedText}"`);
-                return;
-            }
-        }
-
-        console.log("✅ All expected responses verified successfully");
+        Logger.info(`✓ All ${indexes.length} base responses marked`);
     }
 
-    async verifyResponsesLive(
-        expectedCount: number,
-        expectedResponses: Record<string, ExpectedPromptResponse>,
-        timeout = 600000
+    /**
+     * Marks frontier responses using the marking map from testData.
+     */
+    async markAllFrontierResponses(
+        testData: PromptTestData,
+        defaultStatus: 'Correct' | 'Incorrect' = 'Correct'
     ): Promise<void> {
+        Logger.info('📝 Marking frontier responses...');
 
-        const page = this.page;
-        if (!page) throw new Error("No active page");
+        const indexes = await this.workbenchPage.getFrontierResponseNameIndexes();
 
-        const expectedTexts = Object.values(expectedResponses)
-            .map(r => r.expectedResponseText.toLowerCase());
-
-        const start = Date.now();
-        let verifiedCount = 0;
-
-        while (Date.now() - start < timeout) {
-
-            const responseWrappers = page.locator('div.sc-6e40ec64-18.ezXOtW');
-            const count = await responseWrappers.count();
-
-            while (verifiedCount < count) {
-
-                const wrapper = responseWrappers.nth(verifiedCount);
-                const textLocator = wrapper.locator('div.sc-6e40ec64-22.bkcbqC p');
-
-                await textLocator.waitFor({ state: 'visible', timeout: 15000 });
-
-                const responseText = await textLocator.textContent();
-                const cleanText = responseText?.trim().toLowerCase() || "";
-
-                // ✅ SAME FUNCTION REUSED
-                if (this.handleModelError(cleanText, `response ${verifiedCount + 1}`)) return;
-
-                const matched = expectedTexts.some(expected => cleanText.includes(expected));
-
-                if (!matched) {
-                    console.warn(`⚠ Response ${verifiedCount + 1} mismatch`);
-                    return;
-                }
-
-                verifiedCount++;
-            }
-
-            if (verifiedCount >= expectedCount) return;
-
-            await this.context.browser.waitForTimeout(2000);
+        if (indexes.length === 0) {
+            console.warn('  ⚠ No frontier response radio buttons found');
+            return;
         }
 
-        console.warn(`⚠ Timeout: Only ${verifiedCount}/${expectedCount} responses verified`);
-    }
+        const markingMap = testData.workbenchMarking?.frontierResponses;
 
-    private handleModelError(text: string, context: string): boolean {
-        if (!text) return false;
-
-        const isError = text.toLowerCase().includes("model error");
-
-        if (isError) {
-            console.warn(`⚠ Model error detected in ${context}: "${text}"`);
-            console.warn("⚠ Skipping further validation due to model failure");
-            return true;
+        for (const index of indexes) {
+            const status = markingMap?.[index] ?? defaultStatus;
+            await this.workbenchPage.markFrontierResponse(index, status);
         }
 
-        return false;
-    }
-    // ==================== FRONTIER ====================
-
-    async clickFrontierButton(): Promise<boolean> {
-        const btn = this.page.locator('button:has-text("Test on Frontier Models")');
-
-        if (await btn.count() === 0) return false;
-
-        await btn.first().click().catch(async () => {
-            await this.page.evaluate(() => {
-                const el = document.querySelector('button:has-text("Test on Frontier Models")') as HTMLElement;
-                el?.click();
-            });
-        });
-
-        console.log('✓ Frontier button clicked');
-        return true;
+        Logger.info(`✓ All ${indexes.length} frontier responses marked`);
     }
 
-    async waitForFrontierResponses(
-        expectedNew: number,
-        timeout = 600000
-    ): Promise<boolean> {
+    // ─────────────────────────────────────────
+    // FRONTIER FLOW
+    // ─────────────────────────────────────────
 
-        const before = await this.getResponseCount();
-        const target = before + expectedNew;
-
-        console.log(`🚀 Waiting for frontier responses → target ${target}`);
-
-        return this.waitForResponses(target, timeout);
-    }
-
-    async isFrontierEnabled(): Promise<boolean> {
-        const btn = this.page.locator('button:has-text("Test on Frontier Models")');
-
-        if (await btn.count() === 0) return false;
-
-        return !(await btn.first().isDisabled());
-    }
-
-    async waitForFrontierEnabled(timeout = 10000): Promise<boolean> {
+    async waitForFrontierButtonEnabled(timeout = 30000): Promise<boolean> {
+        Logger.info('  → Waiting for Frontier button to enable...');
         const start = Date.now();
 
         while (Date.now() - start < timeout) {
-            if (await this.isFrontierEnabled()) {
-                console.log('✓ Frontier enabled');
+            if (await this.workbenchPage.isFrontierButtonEnabled()) {
+                Logger.info('  ✓ Frontier button enabled');
                 return true;
             }
             await this.context.browser.waitForTimeout(1000);
         }
 
-        console.warn('⚠ Frontier not enabled');
+        console.warn('  ⚠ Frontier button did not enable in time');
         return false;
+    }
+
+    async clickFrontierButton(): Promise<void> {
+
+        await this.workbenchPage.clickFrontierButton();
+        Logger.info('  ✓ Frontier button clicked');
+    }
+
+    async waitForSubmitButtonEnabled(timeout = 30000): Promise<boolean> {
+        Logger.info('  → Waiting for Submit button to enable...');
+        const start = Date.now();
+
+        while (Date.now() - start < timeout) {
+            if (await this.workbenchPage.isSubmitButtonEnabled()) {
+                Logger.info('  ✓ Submit button enabled');
+                return true;
+            }
+            await this.context.browser.waitForTimeout(1000);
+        }
+
+        console.warn('  ⚠ Submit button did not enable in time');
+        return false;
+    }
+
+    // ─────────────────────────────────────────
+    // RESPONSE VERIFICATION
+    // ─────────────────────────────────────────
+
+    async verifyResponses(
+        expectedResponses: Record<string, ExpectedPromptResponse>
+    ): Promise<void> {
+        Logger.info('🕵️ Verifying LLM responses...');
+
+        const allTexts = [
+            ...await this.workbenchPage.getAllBaseResponseTexts(),
+            ...await this.workbenchPage.getAllFrontierResponseTexts()
+        ];
+
+        if (allTexts.length === 0) {
+            console.warn('  ⚠ No responses found — skipping validation');
+            return;
+        }
+
+        const expectedTexts = Object.values(expectedResponses)
+            .map(r => r.expectedResponseText.toLowerCase());
+
+        for (const expectedText of expectedTexts) {
+            const found = allTexts.some(actual =>
+                actual.toLowerCase().includes(expectedText)
+            );
+            if (!found) {
+                console.warn(`  ⚠ Expected response NOT found: "${expectedText}"`);
+            }
+        }
+
+        Logger.info('✅ Response verification complete');
+    }
+
+    // ─────────────────────────────────────────
+    // ERROR DETECTION
+    // ─────────────────────────────────────────
+
+    private isModelError(text: string): boolean {
+        return text.toLowerCase().includes('model error');
+    }
+
+    async checkForModelErrors(): Promise<boolean> {
+        const allTexts = [
+            ...await this.workbenchPage.getAllBaseResponseTexts(),
+            ...await this.workbenchPage.getAllFrontierResponseTexts()
+        ];
+
+        for (const text of allTexts) {
+            if (this.isModelError(text)) {
+                console.warn(`  ⚠ Model error detected: "${text.substring(0, 80)}"`);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // ─────────────────────────────────────────
+    // DEBUG
+    // ─────────────────────────────────────────
+
+    async logWorkbenchSummary(expectedCount: number): Promise<void> {
+        await this.workbenchPage.logResponseSummary(expectedCount);
     }
 }

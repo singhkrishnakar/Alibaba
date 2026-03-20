@@ -1,11 +1,11 @@
 import { BrowserManager } from "../browser/browserManager";
 import { ProjectSelector } from '../services/projectSelector';
-import { WorkbenchMenu } from "../pages/workbenchMenu";
+import { DashboardKebabMenu } from "../pages/dashboardKebabMenu";
 
 export class NavigationService {
 
     constructor(private browser: BrowserManager, private projectSelector: ProjectSelector,
-        private workbenchMenu: WorkbenchMenu) { }
+        private dashboardKebabMenu: DashboardKebabMenu) { }
 
     async openDashboard(baseUrl: string) {
 
@@ -28,6 +28,6 @@ export class NavigationService {
             baseUrl,
             projectUrl
         );
-        await this.workbenchMenu.waitForLoader();
+        await this.dashboardKebabMenu.waitForLoader();
     }
 }
