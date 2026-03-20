@@ -1,11 +1,11 @@
 import { expect, Locator } from '@playwright/test';
 import { BrowserManager } from '../browser/browserManager';
-import { PromptTestData } from '../../types/testData.type';
+import { PromptTestData } from '../../types/promptTestData.type';
 import { Logger } from '../utils/Logger';
 
 export abstract class BaseFormService {
 
-    constructor(protected browser: BrowserManager) {}
+    constructor(protected browser: BrowserManager) { }
 
     protected abstract getFormPage(): { fields: import('../pages/FormFields').FormFields };
 
@@ -67,20 +67,20 @@ export abstract class BaseFormService {
     // SHARED FILL METHODS — all use smartFill
     // ─────────────────────────────────────────
 
-    async fillFinalAnswer(testData: PromptTestData, abortOnFailure = true): Promise<boolean> {
-        try {
-            await this.smartFill(
-                this.getFormPage().fields.finalAnswerTextarea,
-                testData.metadata.finalAnswer,
-                'Final Answer'
-            );
-            return true;
-        } catch (error) {
-            console.error(`  ⚠ Final answer error: ${error}`);
-            if (abortOnFailure) throw error;
-            return false;
-        }
-    }
+    // async fillFinalAnswer(testData: PromptTestData, abortOnFailure = true): Promise<boolean> {
+    //     try {
+    //         await this.smartFill(
+    //             this.getFormPage().fields.finalAnswerTextarea,
+    //             testData.metadata.finalAnswer,
+    //             'Final Answer'
+    //         );
+    //         return true;
+    //     } catch (error) {
+    //         console.error(`  ⚠ Final answer error: ${error}`);
+    //         if (abortOnFailure) throw error;
+    //         return false;
+    //     }
+    // }
 
     async fillSolutionProcess(testData: PromptTestData, abortOnFailure = true): Promise<boolean> {
         try {
@@ -260,5 +260,44 @@ export abstract class BaseFormService {
 
     async verifyThinkingProcess(value: string): Promise<void> {
         await expect(this.getFormPage().fields.thinkingProcessTextarea).toHaveValue(value);
+    }
+
+
+    async fillFinalAnswer(testData: PromptTestData, abortOnFailure = true): Promise<boolean> {
+        // Type guard — only call this for essay type
+        if (testData.metadata.questionType !== 'essay') {
+            console.log('  ℹ Final answer: not applicable for this question type, skipping');
+            return true;
+        }
+        try {
+            // TypeScript now knows finalAnswer exists — no type error
+            await this.smartFill(
+                this.getFormPage().fields.finalAnswerTextarea,
+                testData.metadata.finalAnswer,
+                'Final Answer'
+            );
+            return true;
+        } catch (error) {
+            console.error(`  ⚠ Final answer error: ${error}`);
+            if (abortOnFailure) throw error;
+            return false;
+        }
+    }
+
+    async fillCorrectAnswer(testData: PromptTestData, abortOnFailure = true): Promise<boolean> {
+        // Type guard — only call this for multiple choice
+        if (testData.metadata.questionType !== 'multipleChoice') {
+            console.log('  ℹ Correct answer: not applicable for this question type, skipping');
+            return true;
+        }
+        try {
+            // TypeScript now knows correctAnswer exists — no type error
+            await this.getFormPage().fields.fillCorrectAnswer(testData.metadata.correctAnswer);
+            return true;
+        } catch (error) {
+            console.error(`  ⚠ Correct answer error: ${error}`);
+            if (abortOnFailure) throw error;
+            return false;
+        }
     }
 }

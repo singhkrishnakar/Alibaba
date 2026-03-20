@@ -45,6 +45,16 @@ export default defineConfig({
             testMatch: /tests\/api\/.*/
         }
 
-    ]
+    ],
+    reporter: [
+        // HTML report — open automatically after run
+        ['html', { outputFolder: 'playwright-report', open: 'on-failure' }],
+
+        // Terminal output — shows pass/fail live during run
+        ['list'],
+
+        // JUnit XML — useful for CI/CD pipelines like Jenkins or GitHub Actions
+        // ['junit', { outputFile: 'test-results/results.xml' }]
+    ],
 
 });

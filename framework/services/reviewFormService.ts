@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test';
 import { BrowserManager } from '../browser/browserManager';
 import { ReviewAndSubmitForm } from '../pages/reviewAndSubmitForm';
-import { PromptTestData } from '../../types/testData.type';
+import { PromptTestData } from '../../types/promptTestData.type';
 import { BaseFormService } from './baseFormService';
 import { FormFields } from '../pages/FormFields';
 import { Logger } from '../utils/Logger';
@@ -53,15 +53,17 @@ export class ReviewFormService extends BaseFormService {
     async verifyAllFieldsPrefilled(testData: PromptTestData): Promise<void> {
         Logger.info('  → Verifying review form pre-filled data...');
 
-        // These call the shared verify methods from BaseFormService
-        // scoped to the modal via getFormPage()
-        await this.verifyFinalAnswer(testData.metadata.finalAnswer);
+        // Final Answer — essay only
+        if (testData.metadata.questionType === 'essay') {
+            await this.verifyFinalAnswer(testData.metadata.finalAnswer);
+        }
+
+        // These are shared across both question types
         await this.verifySolutionProcess(testData.metadata.solutionProcess);
         await this.verifyThinkingProcess(testData.metadata.thinkingProcess);
 
         Logger.info('  ✓ All fields verified as pre-filled');
     }
-
     async verifyModalTitle(): Promise<void> {
         await expect(this.reviewForm.modalTitle).toHaveText('Review and Submit');
     }

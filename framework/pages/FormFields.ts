@@ -24,18 +24,6 @@ export class FormFields {
         return this.root.locator('textarea[placeholder*="Let\'s say the length"]');
     }
 
-    /**
- * Solution Process textarea — scoped by its label text, not by nth() index.
- * Both Solution and Thinking share class 'solution-process-textarea' so nth() is fragile.
- * DevTools: document.evaluate("//label[text()='Solution Process']/ancestor::div[contains(@class,'solution-process-textarea')]//textarea", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue
- */
-    // get solutionProcessTextarea() {
-    //     return this.root
-    //         .locator('div.solution-process-textarea')
-    //         .filter({ has: this.page.locator('label', { hasText: 'Solution Process' }) })
-    //         .locator('textarea');
-    // }
-
     /** Solution Process textarea */
     get solutionProcessTextarea() {
         // 1. Find the label container
@@ -45,18 +33,6 @@ export class FormFields {
             .filter({ hasText: /^Solution Process$/ })
             .locator('xpath=./following-sibling::textarea');
     }
-
-    /**
- * Thinking Process textarea — scoped by its label text.
- * DevTools: document.evaluate("//label[text()='Thinking Process/Analysis']/ancestor::div[contains(@class,'solution-process-textarea')]//textarea", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue
- */
-    // get thinkingProcessTextarea() {
-    //     return this.root
-    //         .locator('div.solution-process-textarea')
-    //         .filter({ has: this.page.locator('label', { hasText: 'Thinking Process/Analysis' }) })
-    //         .locator('textarea');
-    // }
-
 
     /** Thinking Process/Analysis textarea */
     get thinkingProcessTextarea() {
@@ -160,19 +136,19 @@ export class FormFields {
         await this.reactSelectOption(discipline).click();
     }
 
-    async addKeyPoint(keyPoint: string): Promise<void> {
-        await this.keyPointsClickArea.click();
-        await this.keyPointsSearchInput.waitFor({ state: 'visible', timeout: 5000 });
-        await this.keyPointsSearchInput.fill(keyPoint);
-        await this.keyPointsAddButton.waitFor({ state: 'visible', timeout: 3000 });
-        await this.keyPointsAddButton.click();
-        await this.keyPointsCustomInput.waitFor({ state: 'visible', timeout: 3000 });
-        await this.keyPointsCustomInput.fill(keyPoint);
-        await this.keyPointsSaveButton.waitFor({ state: 'visible', timeout: 3000 });
-        await this.keyPointsSaveButton.click();
-        await this.root.locator('label').filter({ hasText: 'Final Answer' }).click();
-        await this.page.waitForTimeout(300);
-    }
+    // async addKeyPoint(keyPoint: string): Promise<void> {
+    //     await this.keyPointsClickArea.click();
+    //     await this.keyPointsSearchInput.waitFor({ state: 'visible', timeout: 5000 });
+    //     await this.keyPointsSearchInput.fill(keyPoint);
+    //     await this.keyPointsAddButton.waitFor({ state: 'visible', timeout: 3000 });
+    //     await this.keyPointsAddButton.click();
+    //     await this.keyPointsCustomInput.waitFor({ state: 'visible', timeout: 3000 });
+    //     await this.keyPointsCustomInput.fill(keyPoint);
+    //     await this.keyPointsSaveButton.waitFor({ state: 'visible', timeout: 3000 });
+    //     await this.keyPointsSaveButton.click();
+    //     await this.root.locator('label').filter({ hasText: 'Final Answer' }).click();
+    //     await this.page.waitForTimeout(300);
+    // }
 
     async fillCorrectAnswer(value: string): Promise<void> {
         await this.correctAnswerInput.fill(value);
@@ -183,4 +159,114 @@ export class FormFields {
             await this.incorrectAnswerAt(i).fill(values[i]);
         }
     }
+
+    /**
+     * Gets a specific chip locator by its text value.
+     * Scopes to the div that contains BOTH the key point text AND a remove button.
+     * This dual anchor makes the locator unique and stable.
+     *
+     * DevTools verify (replace 'Physics' with your key point):
+     * [...document.querySelectorAll('button.remove-btn')]
+     *   .find(btn => btn.parentElement?.textContent?.trim().startsWith('Physics'))
+     *   ?.parentElement
+     */
+    chipByText(keyPointText: string) {
+        return this.root
+            .locator('button.remove-btn')
+            .filter({
+                has: this.page.locator(
+                    `xpath=..//self::button[contains(@class,"remove-btn")]`
+                )
+            })
+            .locator('..')  // go up to parent chip div
+            .filter({
+                hasText: keyPointText  // parent div contains the key point text
+            });
+    }
+
+    /**
+     * Checks if a specific key point chip exists in the UI.
+     * Uses both text content and remove button presence as dual anchors.
+     */
+    async isChipPresent(keyPointText: string): Promise<boolean> {
+        // Find all remove buttons whose parent div starts with this text
+        const found = await this.root
+            .locator('button.remove-btn')
+            .evaluateAll((buttons: Element[], text: string) =>
+                buttons.some(btn => {
+                    const parent = btn.parentElement;
+                    // Get direct text node only — exclude button child text
+                    const chipText = Array.from(parent?.childNodes ?? [])
+                        .filter(node => node.nodeType === Node.TEXT_NODE)
+                        .map(node => node.textContent?.trim() ?? '')
+                        .join('')
+                        .trim();
+                    return chipText.toLowerCase() === text.toLowerCase();
+                }),
+                keyPointText
+            );
+        return found;
+    }
+
+    /**
+     * Reads all existing chip texts.
+     * Anchors on button.remove-btn — every chip has exactly one.
+     * Text is the direct text node before the remove button.
+     */
+    async getExistingKeyPointChips(): Promise<string[]> {
+        return this.root
+            .locator('button.remove-btn')
+            .evaluateAll((buttons: Element[]) =>
+                buttons.map(btn => {
+                    const parent = btn.parentElement;
+                    return Array.from(parent?.childNodes ?? [])
+                        .filter(node => node.nodeType === Node.TEXT_NODE)
+                        .map(node => node.textContent?.trim() ?? '')
+                        .join('')
+                        .trim();
+                }).filter(text => text.length > 0)
+            );
+    }
+
+    async addKeyPoint(keyPoint: string): Promise<void> {
+        // Check using BOTH text + remove-btn — dual anchor
+        const alreadyExists = await this.isChipPresent(keyPoint);
+
+        if (alreadyExists) {
+            console.log(`    ✓ Chip "${keyPoint}" already present (text + remove-btn confirmed), skipping`);
+            return;
+        }
+
+        // Open the dropdown
+        await this.keyPointsClickArea.click();
+        await this.keyPointsSearchInput.waitFor({ state: 'visible', timeout: 5000 });
+        await this.keyPointsSearchInput.fill(keyPoint);
+
+        // Click + Add to open custom input
+        await this.keyPointsAddButton.waitFor({ state: 'visible', timeout: 3000 });
+        await this.keyPointsAddButton.click();
+
+        // Fill custom input and save
+        await this.keyPointsCustomInput.waitFor({ state: 'visible', timeout: 3000 });
+        await this.keyPointsCustomInput.fill(keyPoint);
+        await this.keyPointsSaveButton.waitFor({ state: 'visible', timeout: 3000 });
+        await this.keyPointsSaveButton.click();
+
+        // Close dropdown by clicking away
+        await this.root.locator('label').filter({ hasText: 'Final Answer' }).click();
+        await this.page.waitForTimeout(300);
+
+        // Verify using BOTH anchors — text AND remove button must be present
+        const confirmed = await this.isChipPresent(keyPoint);
+        if (!confirmed) {
+            throw new Error(
+                `Key point "${keyPoint}" chip not found after save. ` +
+                `Expected chip with text "${keyPoint}" and remove button. ` +
+                `Current chips: ${JSON.stringify(await this.getExistingKeyPointChips())}`
+            );
+        }
+
+        console.log(`    ✓ Chip "${keyPoint}" confirmed — text + remove-btn both present`);
+    }
+
 }

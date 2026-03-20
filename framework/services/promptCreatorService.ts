@@ -2,7 +2,7 @@ import { expect } from '@playwright/test';
 import { BrowserManager } from '../browser/browserManager';
 import { PromptCreatorPage } from '../pages/promptCreatorPage';
 import { prompts } from '../../data/prompts/prompts';
-import { PromptTestData } from '../../types/testData.type';
+import { PromptTestData } from '../../types/promptTestData.type';
 
 type QuestionType = 'multipleChoice' | 'essay';
 
@@ -75,6 +75,25 @@ export class PromptCreatorService {
         }
     }
 
+    private async fillQuestionTypeSpecificFields(
+        testData: PromptTestData,
+        abortOnFailure: boolean
+    ): Promise<void> {
+
+        if (testData.metadata.questionType === 'essay') {
+            // TypeScript KNOWS metadata is EssayMetadataConfig here
+            // ✅ testData.metadata.finalAnswer — exists, no error
+            // ❌ testData.metadata.correctAnswer — TypeScript error at compile time
+            await this.fillFinalAnswer(testData, abortOnFailure);
+
+        } else {
+            // TypeScript KNOWS metadata is MultipleChoiceMetadataConfig here
+            // ✅ testData.metadata.correctAnswer — exists, no error
+            // ❌ testData.metadata.finalAnswer — TypeScript error at compile time
+            await this.fillCorrectAnswer(testData, abortOnFailure);
+            await this.fillIncorrectAnswers(testData, abortOnFailure);
+        }
+    }
     // ─────────────────────────────────────────
     // SHARED FIELDS (both question types)
     // ─────────────────────────────────────────
@@ -194,7 +213,12 @@ export class PromptCreatorService {
     // ─────────────────────────────────────────
 
     async fillCorrectAnswer(testData: PromptTestData, abortOnFailure = true): Promise<boolean> {
-        console.log('  → Filling correct answer');
+        // Type guard — TypeScript now knows metadata is MultipleChoiceMetadataConfig
+        // inside this block, so correctAnswer is accessible without error
+        if (testData.metadata.questionType !== 'multipleChoice') {
+            console.log('  ℹ Correct answer: not applicable for essay type, skipping');
+            return true;
+        }
         try {
             await this.promptCreator.fillCorrectAnswer(testData.metadata.correctAnswer);
             console.log('  ✓ Correct answer filled');
@@ -207,7 +231,10 @@ export class PromptCreatorService {
     }
 
     async fillIncorrectAnswers(testData: PromptTestData, abortOnFailure = true): Promise<boolean> {
-        console.log('  → Filling incorrect answers');
+        if (testData.metadata.questionType !== 'multipleChoice') {
+            console.log('  ℹ Incorrect answers: not applicable for essay type, skipping');
+            return true;
+        }
         try {
             await this.promptCreator.fillAllIncorrectAnswers(testData.metadata.incorrectAnswers);
             console.log('  ✓ Incorrect answers filled');
@@ -224,9 +251,11 @@ export class PromptCreatorService {
     // ─────────────────────────────────────────
 
     async fillFinalAnswer(testData: PromptTestData, abortOnFailure = true): Promise<boolean> {
-        console.log('  → Filling final answer');
+        if (testData.metadata.questionType !== 'essay') {
+            console.log('  ℹ Final answer: not applicable for multiple choice type, skipping');
+            return true;
+        }
         try {
-            // finalAnswer field name confirmed from your working orchestrator
             await this.promptCreator.fillFinalAnswer(testData.metadata.finalAnswer);
             console.log('  ✓ Final answer filled');
             return true;
