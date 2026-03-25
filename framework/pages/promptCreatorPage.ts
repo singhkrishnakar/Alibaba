@@ -154,8 +154,17 @@ export class PromptCreatorPage extends BasePage {
     }
 
     /** All key point chips shown after selection */
+    /**
+     * All key point chip containers — each contains chip text + remove button.
+     * Stable anchor: button.remove-btn is present in every chip.
+     *
+     * DevTools: document.querySelectorAll('button.remove-btn').length
+     *
+     * TODO: if remove-btn class changes, use:
+     * div[class*="sc-c9e57cf2"]:has(button[type="button"])
+     */
     get keyPointChips() {
-        return this.page().locator('div.sc-c9e57cf2-3 span, div.sc-c9e57cf2-3 div');
+        return this.page().locator('button.remove-btn').locator('..');
     }
 
     // ─────────────────────────────────────────

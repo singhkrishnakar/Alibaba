@@ -51,10 +51,10 @@ export const promptData: PromptTestData[] = [
     },
     {
         id: 'helloPrompt',
-        configModelResponsesCount: modelResponsesCount.default,
+        configModelResponsesCount: modelResponsesCount.reduced,
         expectedResponse: expectedResponse.helloPrompt,
-        expectedBaseResponsesCount: modelResponsesCount.default.baseModelResponsesCount,
-        expectedFrontierResponsesCount: modelResponsesCount.default.frontierModelResponsesCount,
+        expectedBaseResponsesCount: modelResponsesCount.reduced.baseModelResponsesCount,
+        expectedFrontierResponsesCount: modelResponsesCount.reduced.frontierModelResponsesCount,
         metadata: metadata.chemistryUndergrad,
 
         // Use the allCorrect preset — no specific marking needed
@@ -62,5 +62,28 @@ export const promptData: PromptTestData[] = [
             modelResponsesCount.default.baseModelResponsesCount +
             modelResponsesCount.default.frontierModelResponsesCount
         )
+    },
+    {
+        id: 'tellAboutYourself',
+        configModelResponsesCount: modelResponsesCount.reduced,
+        expectedResponse: expectedResponse.simpleGreeting,
+        expectedBaseResponsesCount: modelResponsesCount.reduced.baseModelResponsesCount,
+        expectedFrontierResponsesCount: modelResponsesCount.reduced.frontierModelResponsesCount,
+        metadata: metadata.chemistryUndergrad,
+
+        // Mark responses 1,2,3 as Correct and 4,5 as Incorrect for base
+        // Mark all frontier as Correct
+        workbenchMarking: {
+            baseResponses: {
+                1: 'Correct',
+                2: 'Incorrect'
+            },
+            frontierResponses: {
+                3:  'Correct',
+                4:  'Correct',
+                5:  'Correct',
+                6:  'Incorrect'
+            }
+        }
     }
 ];

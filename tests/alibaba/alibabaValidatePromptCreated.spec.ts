@@ -4,7 +4,7 @@ import { PromptCreatorVerification } from '../../framework/orchestrators/alibaba
 
 const selected = promptData.find(p => p.id === "simpleGreeting");
 
-test.only(`LLM Prompt: helloPrompt`, async ({ testContext }) => {
+test(`LLM Prompt: helloPrompt`, async ({ testContext }) => {
 
   if (!selected) throw new Error("Prompt not found");
 

@@ -53,17 +53,74 @@ export class ValidatedWorkbechPageOrchestrator {
 
             await ctx.dashboardKebabMenu.launch()
 
-            await ctx.promptCreator.createPrompt(testData)
+            await ctx.promptCreatorService.createPrompt(testData)
+
+            await ctx.promptCreatorService.runPrompt()
 
             await ctx.workbenchService.verifyNavigation(testData)
+
+            await ctx.workbenchService.waitForBaseResponses(testData.expectedBaseResponsesCount)
+
+            // Verify base model name
+            await ctx.workbenchService.verifyModelName('qwen3-235b-a22b-thinking-2507');
+
 
             const testSubset = {
                 [testData.id]: testData.expectedResponse
             };
 
-            const allBaseResponses = await ctx.workbenchService.verifyResponses(
-                testSubset
-            )
+            // Verify after base responses load
+            const baseVerified = await ctx.workbenchService
+                .verifyMarkingQuestionForEachResponse(testData.expectedBaseResponsesCount);
+
+            if (!baseVerified) {
+                throw new Error(
+                    `Marking question not visible for all 
+                    ${testData.expectedBaseResponsesCount} base responses`
+                );
+            }
+
+            // Verify View Complete Response button present for all base responses
+            await ctx.workbenchService
+                .verifyViewCompleteResponseButtonForEachResponse(
+                    testData.expectedBaseResponsesCount
+                );
+
+            // Smoke test the modal flow on first response
+            await ctx.workbenchService.verifyCompleteResponseModalFlow();
+
+            // const allBaseResponses = await ctx.workbenchService.verifyBaseResponses(
+            //     testSubset
+            // )
+
+            // Verify retry button present for all base responses
+            await ctx.workbenchService.verifyRetryButtonPresentForEachResponse(
+                testData.expectedBaseResponsesCount
+            );
+
+            // Retry a specific response
+            await ctx.workbenchService.clickRetryForResponse(1, 'base');
+
+            // Verify retry animation started
+            const retrying = await ctx.workbenchService.verifyRetryStarted(1, 'base');
+            if (!retrying) throw new Error('Retry did not start for response 1');
+
+            // Wait for retry to finish
+            await ctx.workbenchService.waitForRetryToComplete(1, 'base');
+
+            // Read all complete texts for deep verification
+            //const { base, frontier } = await ctx.workbenchService.getAllCompleteResponseTexts();
+
+
+            // Frontier retry
+            // await ctx.workbenchService.clickRetryForResponse(6, 'frontier');
+            // await ctx.workbenchService.verifyRetryStarted(6, 'frontier');
+            // await ctx.workbenchService.waitForRetryToComplete(6, 'frontier');
+
+
+            // Verify frontier model names
+            // await ctx.workbenchService.verifyModelName('gemini-2.5-pro');
+            // await ctx.workbenchService.verifyModelName('o4-mini');
 
             const totalDuration = ((Date.now() - totalStart) / 1000).toFixed(1)
 

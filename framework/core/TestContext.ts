@@ -71,9 +71,9 @@ export class TestContext {
         return this._projectSelector ??= new ProjectSelector(this.browser)
     }
 
-    private _promptCreator?: PromptCreatorService
-    get promptCreator() {
-        return this._promptCreator ??= new PromptCreatorService(this.browser, this.promptCreatorPage)
+    private _promptCreatorService?: PromptCreatorService
+    get promptCreatorService() {
+        return this._promptCreatorService ??= new PromptCreatorService(this.browser, this.promptCreatorPage)
     }
 
     private _responseEvaluator?: ResponseEvaluator
