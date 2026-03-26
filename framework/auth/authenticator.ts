@@ -1,11 +1,11 @@
 // Authenticator - Handles login
 import { BrowserManager } from '../browser/browserManager';
-import { UserCredentials } from '../../config/config';
+import { UserCredential } from '../../config/users.config';
 
 export class Authenticator {
     constructor(private browser: BrowserManager) { }
 
-    async login(credentials: UserCredentials, baseUrl: string): Promise<void> {
+    async login(credentials: UserCredential, baseUrl: string): Promise<void> {
         console.log('🔑 Logging in...');
         const startTime = Date.now();
         const page = this.browser.getPage();
@@ -39,7 +39,7 @@ export class Authenticator {
             if (!submitted) throw new Error('Submit button not found');
 
             // Wait for the URL to change away from /login
-            await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 10000 });
+            await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 20000 });
 
             // Verify URL contains /dashboard
             await page.waitForURL(/\/dashboard/, { timeout: 10000 });

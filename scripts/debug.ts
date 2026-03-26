@@ -3,24 +3,31 @@ import { BrowserManager } from '../framework/browser/browserManager';
 import { Authenticator } from '../framework/auth/authenticator';
 import { ProjectSelector } from '../framework/services/projectSelector';
 import { getConfig } from '../config/config';
+import { userConfig } from '../config/users.config';
 
 async function debug() {
     const config = getConfig();
 
-    // Launch browser & page using Playwright
-    const browserInstance = await chromium.launch({ headless: config.headless });
+    // Launch browser & context
+    const browserInstance = await chromium.launch({ headless: config.env.headless });
     const context = await browserInstance.newContext();
     const page = await context.newPage();
 
-    // Pass the Playwright page to BrowserManager
-    const browser = new BrowserManager(page, config.screenshotDir);
+    // Initialize BrowserManager
+    const browser = new BrowserManager(page, config.fileManager.downloadDir);
+
+    // Optional: start worker 0 to load session if needed
+    await browser.start(0);  // ✅ ensures context & page ready
+
     const authenticator = new Authenticator(browser);
     const projectSelector = new ProjectSelector(browser);
 
     try {
         // Login
-        await authenticator.login(config.credentials, config.project.baseUrl);
-
+        await authenticator.login(
+            userConfig.users[0],           // ✅ single UserCredential
+            config.project.baseUrl
+        );
         // Navigate to project
         await projectSelector.navigateToProject(
             config.project.projectName,
@@ -31,10 +38,10 @@ async function debug() {
         await page.waitForTimeout(500);
         await browser.takeScreenshot('debug_project');
 
-        // … your button/debug code stays the same
+        console.log("✅ Debug finished successfully");
 
     } catch (error) {
-        console.error(`Error: ${error}`);
+        console.error(`❌ Error: ${error}`);
     } finally {
         await context.close();
         await browserInstance.close();

@@ -1,9 +1,11 @@
-import { AutomationConfig, getConfig } from "../../config/config"
-import { PromptTestData } from "../../types/testData.type";
+import { AutomationConfig } from "../../config/config"
+import { PromptTestData } from "../../types/promptTestData.type";
 import { Logger } from "../utils/Logger"
 import { TestContext } from "../core/TestContext"
+import { expectedResponse } from "../../data/prompts/expectedResponse";
+import { ExpectedPromptResponse } from "../../types/expectedPromptResponse.type";
 
-export class AutomationOrchestrator {
+export class ResponseValidationOrchestrator {
 
     private context: TestContext
     private config: AutomationConfig
@@ -47,15 +49,21 @@ export class AutomationOrchestrator {
                 this.config.project.projectUrl
             )
 
-            await ctx.workbenchMenu.waitForLoader()
+            await ctx.dashboardKebabMenu.waitForLoader()
 
-            await ctx.workbenchMenu.launch()
+            await ctx.dashboardKebabMenu.launch()
 
-            await ctx.promptOrchestrator.createPrompt(testData)
+            await ctx.promptCreator.createPrompt(testData)
 
-            await ctx.promptOrchestrator.handleResponses(testData)
+            await ctx.promptCreator.runPrompt()
 
-            await ctx.reviewOrchestrator.submitReview(testData.metadata)
+            await ctx.workbenchService.verifyNavigation(testData)
+
+            const testSubset = {
+                [testData.id]: testData.expectedResponse
+            };
+
+            await ctx.workbenchService.verifyResponses(testSubset);
 
             const totalDuration = ((Date.now() - totalStart) / 1000).toFixed(1)
 
@@ -66,8 +74,6 @@ export class AutomationOrchestrator {
             const totalDuration = ((Date.now() - totalStart) / 1000).toFixed(1)
 
             console.error(`\n❌ Automation failed after ${totalDuration}s\n`)
-
-            //await this.context.browser.close()
 
             throw error
 

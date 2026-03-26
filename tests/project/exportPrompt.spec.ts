@@ -1,6 +1,7 @@
 import { test } from "../../framework/fixtures/projectDetail.fixture";
 import { ExportPromptsOrchestrator } from "../../framework/orchestrators/exportFilteredPromptsOrchestrator";
 import { promptData } from "../../data/prompts/promptData";
+import { PromptTestData } from "../../types/promptTestData.type";
 
 test.describe("Export Prompts Tests", () => {
 
@@ -9,7 +10,7 @@ test.describe("Export Prompts Tests", () => {
         await orchestrator.run(promptData[0]);
     });
 
-    test.only("Export Prompt with date filter", async ({ testContext }) => {
+    test("Export Prompt with date filter", async ({ testContext }) => {
 
         const orchestrator = new ExportPromptsOrchestrator(testContext);
 

@@ -1,7 +1,7 @@
 [
   {
-    "prompt_id": 59,
-    "uuid": "41ae40ee-06cf-49a7-b0c5-a25d80890289",
+    "prompt_id": 6,
+    "uuid": "582b4913-02bd-4a8a-b673-59660ee911ef",
     "turn": 1,
     "question_type": "essay-style",
     "input_text": "Just say hi.",
@@ -10,7 +10,7 @@
     "final_answer": "The answer is provided",
     "incorrect_responses": [],
     "shuffled_options": "",
-    "answer_unit": "",
+    "answer_unit": "N/A",
     "knowledge_points": [
       "Physics"
     ],
@@ -21,7 +21,7 @@
           "id": 1,
           "content": "hi",
           "reasoning_content": "",
-          "mark_incorrect": true
+          "mark_incorrect": false
         },
         "model": {
           "id": 263,
@@ -39,42 +39,6 @@
           "id": 263,
           "name": "qwen3-235b-a22b-thinking-2507"
         }
-      },
-      {
-        "data": {
-          "id": 3,
-          "content": "hi",
-          "reasoning_content": "",
-          "mark_incorrect": false
-        },
-        "model": {
-          "id": 263,
-          "name": "qwen3-235b-a22b-thinking-2507"
-        }
-      },
-      {
-        "data": {
-          "id": 4,
-          "content": "hi",
-          "reasoning_content": "",
-          "mark_incorrect": false
-        },
-        "model": {
-          "id": 263,
-          "name": "qwen3-235b-a22b-thinking-2507"
-        }
-      },
-      {
-        "data": {
-          "id": 5,
-          "content": "hi",
-          "reasoning_content": "",
-          "mark_incorrect": false
-        },
-        "model": {
-          "id": 263,
-          "name": "qwen3-235b-a22b-thinking-2507"
-        }
       }
     ],
     "benchmark_model_response": [
@@ -82,22 +46,11 @@
         "data": {
           "content": "Hi!",
           "reasoning_content": "",
-          "mark_incorrect": true
+          "mark_incorrect": false
         },
         "benchmark_model": {
           "id": 283,
           "name": "o4-mini"
-        }
-      },
-      {
-        "data": {
-          "content": "Hi there",
-          "reasoning_content": "",
-          "mark_incorrect": true
-        },
-        "benchmark_model": {
-          "id": 286,
-          "name": "gemini-2.5-pro"
         }
       },
       {
@@ -126,71 +79,16 @@
         "data": {
           "content": "Hi there",
           "reasoning_content": "",
-          "mark_incorrect": true
-        },
-        "benchmark_model": {
-          "id": 286,
-          "name": "gemini-2.5-pro"
-        }
-      },
-      {
-        "data": {
-          "content": "Hi!",
-          "reasoning_content": "",
-          "mark_incorrect": false
-        },
-        "benchmark_model": {
-          "id": 283,
-          "name": "o4-mini"
-        }
-      },
-      {
-        "data": {
-          "content": "Hi there",
-          "reasoning_content": "",
           "mark_incorrect": false
         },
         "benchmark_model": {
           "id": 286,
           "name": "gemini-2.5-pro"
-        }
-      },
-      {
-        "data": {
-          "content": "Hi!",
-          "reasoning_content": "",
-          "mark_incorrect": false
-        },
-        "benchmark_model": {
-          "id": 283,
-          "name": "o4-mini"
-        }
-      },
-      {
-        "data": {
-          "content": "Hi there",
-          "reasoning_content": "",
-          "mark_incorrect": false
-        },
-        "benchmark_model": {
-          "id": 286,
-          "name": "gemini-2.5-pro"
-        }
-      },
-      {
-        "data": {
-          "content": "Hi!",
-          "reasoning_content": "",
-          "mark_incorrect": false
-        },
-        "benchmark_model": {
-          "id": 283,
-          "name": "o4-mini"
         }
       }
     ],
     "media_link": [],
-    "frontier_model_correct_answer": 6,
+    "frontier_model_correct_answer": 3,
     "breaks_model": "Yes",
     "pillar": {
       "name": ""
@@ -204,9 +102,9 @@
     "discipline": {
       "name": "Organic Chemistry"
     },
-    "no_unit_required": true,
-    "start_time": "2026-03-15 06:22:06",
-    "end_time": "2026-03-15 06:23:45",
+    "no_unit_required": false,
+    "start_time": "2026-03-25 04:58:39",
+    "end_time": "2026-03-25 04:59:41",
     "created_by": {
       "uid": 19,
       "name": "Krishnakar Singh",

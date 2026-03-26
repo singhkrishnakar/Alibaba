@@ -1,5 +1,5 @@
 import { Logger } from "../utils/Logger";
-import { ExpectedPromptFields } from "../../data/expectedPromptFields";
+import { ExpectedPromptFields } from "../../data/prompts/expectedPromptFields";
 import { QUESTION_TYPE_EXPORT_MAP } from "../constants/promptMappings";
 
 export class PromptValidationService {
@@ -24,6 +24,10 @@ export class PromptValidationService {
     if (prompt.final_answer !== expected.final_answer) {
       throw new Error(`final_answer mismatch`)
     }
+
+    // TEMP DEBUG — remove after fixing
+    console.log('Actual knowledge_points:', JSON.stringify(prompt.knowledge_points));
+    console.log('Expected knowledge_points:', JSON.stringify(expected.knowledge_points));
 
     if (
       JSON.stringify(prompt.knowledge_points) !==

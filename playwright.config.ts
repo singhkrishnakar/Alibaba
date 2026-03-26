@@ -1,4 +1,7 @@
 import { defineConfig } from '@playwright/test';
+import * as dotenv from "dotenv";
+
+dotenv.config(); // ✅ Load environment variables before config
 
 export default defineConfig({
 
@@ -10,27 +13,48 @@ export default defineConfig({
         headless: false
     },
 
-    workers: 1, // run tests in parallel
-    fullyParallel: true,
+    workers: 1,
 
     projects: [
 
-        // Setup project (runs login once)
         {
             name: 'setup',
-            testMatch: /auth\.setup\.ts/
+            testMatch: /auth\.setup\.ts/,
+            metadata: {
+                authMode: 'ui'   // ✅ force UI login
+            }
         },
 
-        // Actual tests
         {
-            name: 'chromium',
+            name: 'ui',
             dependencies: ['setup'],
+            use: {
+                storageState: 'playwright/.auth/user.json'
+            },
+            metadata: {
+                authMode: 'ui'   // ✅ UI tests
+            },
+            testMatch: /tests\/(project|alibaba)\/.*/
+        },
 
-            // use: {
-            //     storageState: 'playwright/.auth/user.json'
-            // }
+        {
+            name: 'api',
+            metadata: {
+                authMode: 'api'  // ✅ API tests
+            },
+            testMatch: /tests\/api\/.*/
         }
 
-    ]
+    ],
+    reporter: [
+        // HTML report — open automatically after run
+        ['html', { outputFolder: 'playwright-report', open: 'on-failure' }],
+
+        // Terminal output — shows pass/fail live during run
+        ['list'],
+
+        // JUnit XML — useful for CI/CD pipelines like Jenkins or GitHub Actions
+        // ['junit', { outputFile: 'test-results/results.xml' }]
+    ],
 
 });

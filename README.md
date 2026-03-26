@@ -1,252 +1,372 @@
-# LLM Toolkit Automation Framework
+Playwright Automation Framework – LLM Toolkit
+Overview
 
-A reusable, structured automation framework for the LLM Toolkit staging environment.
+This repository contains an enterprise-style end-to-end automation framework built using Playwright + TypeScript.
 
-## Features
+The framework is designed to test the LLM Toolkit platform with a focus on:
 
-- **Modular Architecture**: Separated concerns into logical modules
-- **Async/Await Pattern**: Efficient browser automation using Playwright
-- **Comprehensive Logging**: Track all automation steps with detailed logs
-- **Screenshot Capture**: Automatic screenshots at key steps
-- **Configuration-Driven**: JSON-based configuration for easy customization
-- **Error Handling**: Robust error handling and reporting
+Scalable test architecture
 
-## Project Structure
+Maintainable Page Object Model
 
-```
-framework/
-├── config.py              # Configuration dataclasses
-├── logger_setup.py        # Logging configuration
-├── browser_manager.py     # Browser operations
-├── authenticator.py       # Authentication module
-├── project_selector.py    # Project navigation
-├── prompt_creator.py      # Prompt creation
-├── response_evaluator.py  # Response evaluation
-├── form_handler.py        # Form submission
-├── main.py               # Main orchestrator
-├── requirements.txt      # Python dependencies
-├── config_example.json   # Example configuration
-└── README.md            # This file
-```
+Service-based automation logic
 
-## Installation
+Reusable orchestrators
 
-1. Navigate to framework directory
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
-playwright install
-```
+Session-based authentication
 
-## Usage
+API + UI automation
 
-### Method 1: Using Configuration File
+Clean logging and reporting
 
-1. Create a `config.json` file based on `config_example.json`
-2. Update with your credentials and settings
-3. Run:
-```python
-import asyncio
-from main import LLMToolkitAutomation
+The framework separates test logic, UI interactions, services, and orchestration layers to ensure tests remain readable, stable, and easy to extend.
 
-asyncio.run(LLMToolkitAutomation.from_config_file("config.json"))
-```
+Framework Architecture
 
-### Method 2: Programmatic Usage
+The framework follows a layered architecture:
 
-```python
-import asyncio
-from config import AutomationConfig, UserCredentials, ProjectConfig, PromptConfig, MetadataConfig, QuestionType
-from main import LLMToolkitAutomation
+tests
+   ↓
+fixtures
+   ↓
+orchestrators
+   ↓
+services
+   ↓
+pages
+   ↓
+browser manager
+Layer Responsibilities
+Layer	Responsibility
+Tests	Define test scenarios
+Fixtures	Provide shared test context
+Orchestrators	Combine services to run flows
+Services	Business logic (filters, export, validation)
+Pages	UI locators and page interactions
+BrowserManager	Wrapper around Playwright page
+API	API interaction layer
+Utils	Logging, helpers
+Project Structure
+framework
+│
+├── api
+│   ├── authApi.ts
+│   └── promptsApi.ts
+│
+├── browser
+│   └── browserManager.ts
+│
+├── core
+│   └── TestContext.ts
+│
+├── fixtures
+│   └── projectDetail.fixture.ts
+│
+├── orchestrators
+│   ├── exportFilteredPromptsOrchestrator.ts
+│   ├── promptOrchestrator.ts
+│   ├── reviewOrchestrator.ts
+│   └── workbenchOrchestrator.ts
+│
+├── pages
+│   ├── basePage.ts
+│   ├── projectDetailPage.ts
+│   ├── workbenchMenu.ts
+│   └── workbenchPage.ts
+│
+├── services
+│   ├── exportService.ts
+│   ├── filterService.ts
+│   ├── formHandler.ts
+│   ├── navigationService.ts
+│   ├── promptCreator.ts
+│   ├── promptExportParser.ts
+│   ├── promptValidationService.ts
+│   ├── promptApiValidationService.ts
+│   └── responseEvaluator.ts
+│
+├── utils
+│   └── Logger.ts
+│
+tests
+│
+├── auth
+│   └── auth.setup.ts
+│
+├── project
+│   └── exportPrompt.spec.ts
+│
+├── api
+│   └── getPrompts.spec.ts
+│
+data
+│
+├── prompts
+│   └── promptData.ts
+│
+config
+│
+├── config.ts
+├── users.config.ts
+└── fileManager.ts
+Authentication Strategy
 
-config = AutomationConfig(
-    credentials=UserCredentials(
-        email="your_email@innodata.com",
-        password="your_password"
-    ),
-    project=ProjectConfig(
-        project_name="Your Project",
-        project_url="/project/prompt/XXX"
-    ),
-    prompt=PromptConfig(
-        question_text="Your question",
-        question_type=QuestionType.ESSAY_STYLE,
-        level="Undergraduate",
-        discipline="Your Discipline"
-    ),
-    metadata=MetadataConfig(
-        final_answer="Your answer",
-        solution_process="Your process",
-        thinking_process="Your thinking",
-        level="Undergraduate",
-        discipline="Your Discipline",
-        key_points="Key points",
-        no_unit_required=True
-    )
-)
+The framework supports two authentication methods.
 
-automation = LLMToolkitAutomation(config)
-asyncio.run(automation.run())
-```
+1️⃣ UI Login (For UI Tests)
 
-### Method 3: Custom Workflow
+The framework logs in once and reuses session storage.
 
-```python
-import asyncio
-from config import UserCredentials, ProjectConfig
-from browser_manager import BrowserManager
-from authenticator import LLMToolkitAuthenticator
+Flow
+auth.setup.ts
+    ↓
+UI Login
+    ↓
+Save session state
+    ↓
+playwright/.auth/user.json
+    ↓
+All UI tests reuse session
+Benefits
 
-async def custom_workflow():
-    browser = BrowserManager(headless=False, screenshot_dir="./screenshots")
-    await browser.launch()
-    
-    authenticator = LLMToolkitAuthenticator(browser)
-    await authenticator.login(
-        UserCredentials(email="user@innodata.com", password="password")
-    )
-    
-    # Your custom logic here
-    
-    await browser.close()
+Faster UI tests
 
-asyncio.run(custom_workflow())
-```
+No repeated login
 
-## Module Reference
+Stable session reuse
 
-### BrowserManager
-Handles all browser operations:
-- `launch()` - Start browser
-- `navigate_to(url)` - Navigate to URL
-- `click(selector)` - Click element
-- `fill_text(selector, text)` - Fill input
-- `evaluate_script(script)` - Run JavaScript
-- `take_screenshot(filename)` - Save screenshot
+2️⃣ API Login (For API Tests)
 
-### Authenticator
-Handles login/logout:
-- `login(credentials, base_url)` - Login to application
-- `logout()` - Logout from application
+API tests authenticate using Auth API.
 
-### ProjectSelector
-Navigate projects:
-- `navigate_to_project(project_name)` - Select project
-- `get_available_projects()` - List projects
+AuthApi.login()
+      ↓
+Get access token
+      ↓
+Pass token to API services
+      ↓
+Execute API requests
 
-### PromptCreator
-Create and run prompts:
-- `create_prompt(config)` - Create new prompt
-- `run_prompt()` - Execute prompt
+Example login endpoint:
 
-### ResponseEvaluator
-Evaluate responses:
-- `evaluate_response(index, status)` - Mark single response
-- `evaluate_multiple_responses(evaluations)` - Mark multiple
-- `mark_all_responses_random()` - Random evaluation
+POST https://llmtoolkit-auth-staging.innodata.com/api/v1/auth/login
 
-### FormHandler
-Handle forms:
-- `fill_metadata(metadata)` - Fill metadata form
-- `submit_form()` - Submit form
+Request body:
 
-## Configuration Options
+{
+  "email": "...",
+  "password": "..."
+}
+Playwright Projects
 
-### AutomationConfig
-- `credentials`: User login credentials
-- `project`: Project settings
-- `prompt`: Prompt configuration
-- `metadata`: Form metadata
-- `headless`: Run in headless mode (default: False)
-- `wait_timeout`: Default wait time in ms (default: 10000)
-- `take_screenshots`: Enable screenshots (default: True)
-- `screenshot_dir`: Screenshot directory (default: "./screenshots")
+Playwright is configured with three projects.
 
-## Logging
+projects
+│
+├── setup
+├── ui
+└── api
+Setup Project
 
-Logs are saved to `./logs/automation_TIMESTAMP.log` and also printed to console.
+Runs authentication setup.
 
-## Extending the Framework
+tests/auth/auth.setup.ts
+UI Project
 
-### Adding New Modules
+Runs UI automation tests.
 
-1. Create a new module file (e.g., `my_module.py`)
-2. Import `BrowserManager` and logger
-3. Create a class with methods for your functionality
-4. Use `browser.evaluate_script()` for JavaScript interactions
+Uses saved session:
 
-Example:
-```python
-from browser_manager import BrowserManager
-from logger_setup import setup_logger
+playwright/.auth/user.json
+API Project
 
-logger = setup_logger(__name__)
+Runs API tests.
 
-class MyModule:
-    def __init__(self, browser_manager: BrowserManager):
-        self.browser = browser_manager
-    
-    async def do_something(self):
-        # Your code here
-        logger.info("Did something")
-```
+Does NOT run UI login
 
-### Adding to Main Workflow
+Uses API authentication
 
-```python
-# In main.py
-from my_module import MyModule
+Environment Setup
 
-class LLMToolkitAutomation:
-    def __init__(self, config):
-        # ... existing code ...
-        self.my_module = MyModule(self.browser)
-    
-    async def run(self):
-        # ... existing code ...
-        await self.my_module.do_something()
-        # ... rest of code ...
-```
+Create a .env file in the project root.
 
-## Troubleshooting
+EMAIL=pzr@innodata.com
+PASSWORD=Password@2029
 
-### Browser won't launch
-- Install Playwright browsers: `playwright install`
-- Check if port 3000+ is available
+Example structure:
 
-### Elements not found
-- Check selectors in `evaluate_script()` calls
-- Use `take_screenshot()` to debug page state
-- Increase timeout in configuration
+Alibaba
+ ├── framework
+ ├── tests
+ ├── playwright.config.ts
+ ├── package.json
+ └── .env
 
-### Login fails
-- Verify credentials are correct
-- Check if login page URL is correct
-- Check for CAPTCHA or 2FA
+Environment variables are loaded using dotenv in playwright.config.ts.
 
-## Best Practices
+Installation
 
-1. Always use try-except blocks in async functions
-2. Take screenshots at key workflow steps
-3. Use descriptive error messages in logging
-4. Keep credentials in separate config files
-5. Test with small tasks before running large batches
-6. Review screenshots to debug issues
+Clone repository
 
-## Future Enhancements
+git clone <repo>
+cd Alibaba
 
-- [ ] Database logging
-- [ ] Email notifications
-- [ ] Parallel task execution
-- [ ] Task scheduling
-- [ ] Performance metrics
-- [ ] Screenshot comparison
-- [ ] CI/CD integration
+Install dependencies
 
-## Support
+npm install
 
-For issues or questions, refer to the module docstrings and logging output.
+Install Playwright browsers
 
-## License
+npx playwright install
+Running Tests
+Run All Tests
+npx playwright test
+Run UI Tests Only
+npx playwright test --project=ui
 
-This framework is provided as-is for internal use.
+This will:
+
+setup project
+   ↓
+UI login
+   ↓
+reuse session
+   ↓
+run UI tests
+Run API Tests Only
+npx playwright test --project=api
+
+This will:
+
+API login
+   ↓
+retrieve token
+   ↓
+execute API requests
+
+No browser will open.
+
+Run Specific Test
+npx playwright test tests/project/exportPrompt.spec.ts
+Run Tests in Headed Mode
+npx playwright test --headed
+API Testing Example
+
+Example API test:
+
+tests/api/getPrompts.spec.ts
+
+Flow:
+
+API login
+↓
+fetch prompts
+↓
+validate response
+↓
+validate metrics
+
+Example validation:
+
+validator.validatePromptStructure(prompt)
+validator.validateProjectMetrics(metrics)
+Logging System
+
+The framework uses a centralized Logger utility.
+
+Log types:
+
+Logger.info()
+Logger.success()
+Logger.error()
+
+Example output:
+
+🔑 Authenticating via API
+🌐 Sending login request
+📥 Response status: 200
+✅ API login successful
+📡 Fetching prompts
+Data Driven Testing
+
+Test data is stored in:
+
+data/prompts/promptData.ts
+
+Benefits:
+
+Reusable test inputs
+
+Clean test cases
+
+Easier maintenance
+
+Screenshots
+
+Screenshots are captured automatically during key UI steps.
+
+Stored under:
+
+screenshots/
+
+Examples:
+
+login page
+
+successful login
+
+important UI states
+
+Session Storage
+
+Authenticated UI sessions are stored in:
+
+playwright/.auth/user.json
+
+Add to .gitignore:
+
+playwright/.auth
+Key Benefits of This Framework
+
+✔ Modular architecture
+✔ UI + API automation support
+✔ Reusable services and orchestrators
+✔ Clean logging system
+✔ Session-based authentication
+✔ Scalable enterprise architecture
+
+Future Improvements
+
+Possible enhancements:
+
+API schema validation
+
+UI vs API data validation
+
+CI/CD integration
+
+parallel test execution
+
+visual regression testing
+
+automated test reporting
+
+Conclusion
+
+This framework follows modern Playwright best practices and supports both UI and API automation.
+
+The architecture ensures:
+
+maintainability
+
+scalability
+
+reliability
+
+making it suitable for enterprise-level automation suites.
+
+If you want, I can also help you add one section that makes your README look very senior-level:
+
+CI/CD Integration (GitHub Actions / Jenkins)
+
+Most enterprise repos include that — and it makes the framework look production-ready.

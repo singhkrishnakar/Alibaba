@@ -2,28 +2,29 @@ import { AutomationConfig, getConfig } from "../../config/config";
 import { BrowserManager } from "../browser/browserManager";
 
 import { Authenticator } from "../auth/authenticator";
-import { SessionValidator } from "../auth/sessionManager";
 
-import { PromptOrchestrator } from "../orchestrators/promptOrchestrator";
-import { ReviewOrchestrator } from "../orchestrators/reviewOrchestrator";
-import { WorkbenchOrchestrator } from "../orchestrators/workbenchOrchestrator";
-import { ProjectDetailOrchestrator } from "../orchestrators/projectDetailOrchestration";
-
-import { WorkbenchMenu } from "../pages/workbenchMenu";
+import { DashboardKebabMenu } from "../pages/dashboardKebabMenu";
 import { WorkbenchPage } from "../pages/workbenchPage";
 import { ProjectDetailPage } from "../pages/projectDetailPage";
+import { PromptCreatorPage } from "../pages/promptCreatorPage";
+import { ReviewAndSubmitForm } from "../pages/reviewAndSubmitForm";
 
 import { FormHandler } from "../services/formHandler";
 import { NavigationService } from "../services/navigationService";
 import { ProjectSelector } from "../services/projectSelector";
-import { PromptCreator } from "../services/promptCreator";
 import { ResponseEvaluator } from "../services/responseEvaluator";
+import { WorkbenchService } from "../services/workbenchService";
 
-import {fileManager} from "../../config/fileManager"
+import { fileManager } from "../../config/fileManager.config"
 import { FilterService } from "../services/filterService";
 import { PromptValidationService } from "../services/promptValidationService";
 import { ExportService } from "../services/exportService";
 import { PromptExportParser } from "../services/promptExportParser";
+import { PromptCreatorService } from "../services/promptCreatorService";
+import { ReviewFormService } from "../services/reviewFormService"
+
+import { SessionValidator } from '../auth/sessionManager';
+import { UserSessionManager } from '../auth/sessionManager';
 
 export class TestContext {
 
@@ -52,9 +53,15 @@ export class TestContext {
         return this._authenticator ??= new Authenticator(this.browser)
     }
 
-    private _sessionValidator?: SessionValidator
+    private _sessionValidator?: SessionValidator;
     get sessionValidator() {
-        return this._sessionValidator ??= new SessionValidator(this.browser)
+        // ✅ Use SessionValidator, not UserSessionManager
+        return this._sessionValidator ??= new SessionValidator(this.browser);
+    }
+
+    private _userSessionManager?: UserSessionManager;
+    get userSessionManager() {
+        return this._userSessionManager ??= new UserSessionManager();
     }
 
     // ---------- SERVICES ----------
@@ -64,9 +71,9 @@ export class TestContext {
         return this._projectSelector ??= new ProjectSelector(this.browser)
     }
 
-    private _promptCreator?: PromptCreator
-    get promptCreator() {
-        return this._promptCreator ??= new PromptCreator(this.browser)
+    private _promptCreatorService?: PromptCreatorService
+    get promptCreatorService() {
+        return this._promptCreatorService ??= new PromptCreatorService(this.browser, this.promptCreatorPage)
     }
 
     private _responseEvaluator?: ResponseEvaluator
@@ -82,7 +89,7 @@ export class TestContext {
     private _navigationService?: NavigationService
     get navigationService() {
         return this._navigationService ??=
-            new NavigationService(this.browser, this.projectSelector, this.workbenchMenu)
+            new NavigationService(this.browser, this.projectSelector, this.dashboardKebabMenu)
     }
 
     private _filterService?: FilterService
@@ -105,11 +112,21 @@ export class TestContext {
         return this._promptExportParser ??= new PromptExportParser()
     }
 
+    private _workbenchService?: WorkbenchService
+    get workbenchService() {
+        return this._workbenchService ??= new WorkbenchService(this)
+    }
+
+    private _reviewFormService?: ReviewFormService
+    get reviewFormService() {
+        return this._reviewFormService ??= new ReviewFormService(this.browser, this.reviewAndSubmitForm )
+    }
+
     // ---------- PAGES ----------
 
-    private _workbenchMenu?: WorkbenchMenu
-    get workbenchMenu() {
-        return this._workbenchMenu ??= new WorkbenchMenu(this)
+    private _dashboardKebabMenu?: DashboardKebabMenu
+    get dashboardKebabMenu() {
+        return this._dashboardKebabMenu ??= new DashboardKebabMenu(this)
     }
 
     private _workbenchPage?: WorkbenchPage
@@ -122,26 +139,15 @@ export class TestContext {
         return this._projectDetailPage ??= new ProjectDetailPage(this)
     }
 
+    private _promptCreatorPage?: PromptCreatorPage
+    get promptCreatorPage() {
+        return this._promptCreatorPage ??= new PromptCreatorPage(this)
+    }
+
+    private _reviewAndSubmitForm?: ReviewAndSubmitForm
+    get reviewAndSubmitForm() {
+        return this._reviewAndSubmitForm ??= new ReviewAndSubmitForm(this)
+    }
+
     // ---------- ORCHESTRATORS ----------
-
-    private _workbenchOrchestrator?: WorkbenchOrchestrator
-    get workbenchOrchestrator() {
-        return this._workbenchOrchestrator ??= new WorkbenchOrchestrator(this)
-    }
-
-    private _promptOrchestrator?: PromptOrchestrator
-    get promptOrchestrator() {
-        return this._promptOrchestrator ??= new PromptOrchestrator(this)
-    }
-
-    private _reviewOrchestrator?: ReviewOrchestrator
-    get reviewOrchestrator() {
-        return this._reviewOrchestrator ??= new ReviewOrchestrator(this)
-    }
-
-    private _projectDetailOrchestrator?: ProjectDetailOrchestrator
-    get projectDetailOrchestrator() {
-        return this._projectDetailOrchestrator ??= new ProjectDetailOrchestrator(this)
-    }
-
 }
