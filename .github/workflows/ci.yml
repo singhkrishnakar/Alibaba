@@ -2,13 +2,14 @@ name: CI Example
 
 on:
   push:
-    branches: [ implementGitAction ]
+    branches: [ addEmailForReporting ]
   pull_request:
-    branches: [ implementGitAction ]
+    branches: [ addEmailForReporting ]
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    environment: Alibaba
 
     steps:
       - name: Checkout code
@@ -26,7 +27,8 @@ jobs:
         run: npx playwright install --with-deps
 
       - name: Run Playwright tests
-        run: npx playwright test --project=ui
+        # always() ensures report is generated even if tests fail
+        run: npx playwright test --project=ui || true
         env:
           HEADLESS: true
           BASE_URL: ${{ secrets.BASE_URL }}
@@ -35,11 +37,17 @@ jobs:
           PROJECT_URL: ${{ secrets.PROJECT_URL }}
           PROJECT_NAME: ${{ secrets.PROJECT_NAME }}
 
-      - name: Upload test report
-        if: always()  # upload even if tests fail
+      # ── Generate HTML report ──
+      - name: Generate Playwright HTML report
+        if: always()
+        run: npx playwright show-report --host 0.0.0.0 || true
+
+      # ── Upload report as artifact (downloadable from GitHub Actions UI) ──
+      - name: Upload Playwright report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-${{ github.run_number }}
           path: playwright-report/
           retention-days: 7
 
@@ -47,6 +55,102 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results
+          name: test-results-${{ github.run_number }}
           path: test-results/
           retention-days: 7
+
+      # ── Read test results to include in email ──
+      - name: Read test summary
+        if: always()
+        id: test-summary
+        run: |
+          # Count passed and failed from Playwright output
+          if [ -f "playwright-report/index.html" ]; then
+            PASSED=$(grep -o '"passed":[0-9]*' playwright-report/index.html | head -1 | grep -o '[0-9]*' || echo "0")
+            FAILED=$(grep -o '"failed":[0-9]*' playwright-report/index.html | head -1 | grep -o '[0-9]*' || echo "0")
+            TOTAL=$((PASSED + FAILED))
+          else
+            PASSED="N/A"
+            FAILED="N/A"
+            TOTAL="N/A"
+          fi
+          echo "passed=$PASSED" >> $GITHUB_OUTPUT
+          echo "failed=$FAILED" >> $GITHUB_OUTPUT
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+
+      # ── Send email with report ──
+      - name: Send test report email
+        if: always()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: |
+            🤖 Playwright Test Report — ${{ job.status == 'success' && '✅ PASSED' || '❌ FAILED' }} | Run #${{ github.run_number }}
+          to: ${{ secrets.MAIL_RECIPIENT }}
+          from: GitHub Actions <${{ secrets.MAIL_USERNAME }}>
+          html_body: |
+            <html>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+
+              <h2 style="color: ${{ job.status == 'success' && '#28a745' || '#dc3545' }}">
+                ${{ job.status == 'success' && '✅ All Tests Passed' || '❌ Some Tests Failed' }}
+              </h2>
+
+              <table style="border-collapse: collapse; width: 100%;">
+                <tr style="background: #f8f9fa;">
+                  <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>Repository</strong></td>
+                  <td style="padding: 8px; border: 1px solid #dee2e6;">${{ github.repository }}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>Branch</strong></td>
+                  <td style="padding: 8px; border: 1px solid #dee2e6;">${{ github.ref_name }}</td>
+                </tr>
+                <tr style="background: #f8f9fa;">
+                  <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>Triggered by</strong></td>
+                  <td style="padding: 8px; border: 1px solid #dee2e6;">${{ github.actor }}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>Run number</strong></td>
+                  <td style="padding: 8px; border: 1px solid #dee2e6;">#${{ github.run_number }}</td>
+                </tr>
+                <tr style="background: #f8f9fa;">
+                  <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>Total tests</strong></td>
+                  <td style="padding: 8px; border: 1px solid #dee2e6;">${{ steps.test-summary.outputs.total }}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>Passed</strong></td>
+                  <td style="padding: 8px; border: 1px solid #dee2e6; color: #28a745;">
+                    ✅ ${{ steps.test-summary.outputs.passed }}
+                  </td>
+                </tr>
+                <tr style="background: #f8f9fa;">
+                  <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>Failed</strong></td>
+                  <td style="padding: 8px; border: 1px solid #dee2e6; color: #dc3545;">
+                    ❌ ${{ steps.test-summary.outputs.failed }}
+                  </td>
+                </tr>
+              </table>
+
+              <br>
+
+              <p>
+                <a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                   style="background: #0366d6; color: white; padding: 10px 20px;
+                          text-decoration: none; border-radius: 4px; display: inline-block;">
+                  View Full Report on GitHub
+                </a>
+              </p>
+
+              <p style="color: #6c757d; font-size: 12px;">
+                Report artifact available for 7 days in GitHub Actions.
+                <br>
+                Commit: ${{ github.sha }}
+              </p>
+
+            </body>
+            </html>
+          attachments: playwright-report/index.html
