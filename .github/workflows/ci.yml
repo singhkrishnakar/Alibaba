@@ -1,0 +1,30 @@
+name: CI Example
+
+# What triggers the job? (Like a Jenkins Trigger)
+on:
+  push:
+    branches: [ implementGitAction ]
+  pull_request:
+    branches: [ implementGitAction ]
+
+jobs:
+  build-and-test:
+    # What OS to use? (Like a Jenkins Node)
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Pull the code (Like 'checkout scm' in Jenkins)
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Set up environment
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Step 3: Run commands (Like 'sh' steps in Jenkins)
+      - name: Install and Test
+        run: |
+          npm install
+          npx playwright test --project=ui
