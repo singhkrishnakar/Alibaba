@@ -2,7 +2,7 @@ import { test } from '../../framework/fixtures/alibaba.fixture';
 import { RewritePromptOrchestrator } from '../../framework/orchestrators/rewritePromptOrchestrator';
 import { promptData } from '../../data/prompts/promptData';
 
-test.only(
+test(
     'Rewrite Prompt — edit prompt and verify new responses',
     async ({ testContext }) => {
         const orchestrator = new RewritePromptOrchestrator(testContext);

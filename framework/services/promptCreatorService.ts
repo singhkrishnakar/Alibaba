@@ -217,34 +217,29 @@ export class PromptCreatorService {
      * Reuses all existing verify methods — no new verification logic.
      * Called after workbenchService.clickRewritePromptAndWaitForNavigation().
      */
-    async verifyRewritePromptAutoPopulation(testData: PromptTestData): Promise<void> {
-        Logger.info('🔍 Verifying Rewrite Prompt auto-population...');
+    async verifyRewritePromptAutoPopulation(
+        testData: PromptTestData,
+        isDraft = false  // ← pass true when verifying draft-loaded data
+    ): Promise<void> {
+        Logger.info('🔍 Verifying auto-population...');
         const promptConfig = prompts[testData.id];
 
-        // ── 1. Page loaded ──
         await this.verifyPageLoaded();
-        console.log('  ✓ Prompt creation page loaded');
-
-        // ── 2. Prompt text ──
         await this.verifyPromptFilled(promptConfig.promptText);
 
-        // ── 3. Solution Process ──
         await expect(this.promptCreator.solutionProcessTextarea)
             .toHaveValue(testData.metadata.solutionProcess, { timeout: 5000 });
         console.log('  ✓ Solution Process verified');
 
-        // ── 4. Thinking Process ──
         await expect(this.promptCreator.thinkingProcessTextarea)
             .toHaveValue(testData.metadata.thinkingProcess, { timeout: 5000 });
         console.log('  ✓ Thinking Process verified');
 
-        // ── 5. Answer Unit ──
         if (testData.metadata.answerUnit) {
             await expect(this.promptCreator.answerUnitTextarea)
                 .toHaveValue(testData.metadata.answerUnit, { timeout: 5000 });
             console.log(`  ✓ Answer Unit verified: ${testData.metadata.answerUnit}`);
         } else {
-            // No unit — checkbox should be checked
             const isChecked = await this.promptCreator.noUnitCheckbox.isChecked()
                 .catch(() => false);
             if (!isChecked) {
@@ -254,16 +249,16 @@ export class PromptCreatorService {
             }
         }
 
-        // ── 6. Level dropdown ──
         await this.verifyLevelSelected(testData.metadata.level);
-
-        // ── 7. Discipline dropdown ──
         await this.verifyDisciplineSelected(testData.metadata.discipline);
 
-        // ── 8. Key Points chips ──
-        await this.verifyKeyPointChips(testData.metadata.knowledgePoints ?? []);
+        // ── Key Points — use draft-aware method when loading from draft ──
+        if (isDraft) {
+            await this.verifyDraftKeyPointChips(testData.metadata.knowledgePoints ?? []);
+        } else {
+            await this.verifyKeyPointChips(testData.metadata.knowledgePoints ?? []);
+        }
 
-        // ── 9. Question type specific fields ──
         if (testData.metadata.questionType === 'essay') {
             await this.verifyFinalAnswer(testData.metadata.finalAnswer);
         } else {
@@ -271,7 +266,7 @@ export class PromptCreatorService {
             await this.verifyIncorrectAnswers(testData.metadata.incorrectAnswers);
         }
 
-        Logger.info('✅ All fields verified as auto-populated after Rewrite Prompt');
+        Logger.info('✅ All fields verified as auto-populated');
     }
 
     // ─────────────────────────────────────────
@@ -378,6 +373,38 @@ export class PromptCreatorService {
                 );
             }
             console.log(`  ✓ Key point chip verified: "${expected}"`);
+        }
+    }
+
+    /**
+     * Verifies key point chips in DRAFT/DISABLED mode.
+     * Uses getDraftKeyPointChipTexts() which handles both
+     * normal chips (with remove button) and draft chips (without remove button).
+     *
+     * Call this instead of verifyKeyPointChips() when verifying draft-loaded data.
+     */
+    async verifyDraftKeyPointChips(expectedKeyPoints: string[]): Promise<void> {
+        if (!expectedKeyPoints.length) {
+            console.log('  ℹ No key points to verify, skipping');
+            return;
+        }
+
+        // Use the draft-aware method that handles missing remove button
+        const actualChips = await this.promptCreator.getDraftKeyPointChipTexts();
+
+        console.log(`  ℹ Found draft chips: ${JSON.stringify(actualChips)}`);
+
+        for (const expected of expectedKeyPoints) {
+            const found = actualChips.some(
+                chip => chip.toLowerCase() === expected.trim().toLowerCase()
+            );
+            if (!found) {
+                throw new Error(
+                    `Draft key point chip "${expected}" not found.\n` +
+                    `  Actual chips: ${JSON.stringify(actualChips)}`
+                );
+            }
+            console.log(`  ✓ Draft key point chip verified: "${expected}"`);
         }
     }
 

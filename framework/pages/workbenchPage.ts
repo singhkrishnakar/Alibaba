@@ -24,7 +24,7 @@ export class WorkbenchPage extends BasePage {
     }
 
     /**
-     * Save as Draft button.
+     * Save as Draft button — enabled only after at least one response loads.
      * DevTools: document.querySelector('button:has(svg[data-testid="DraftsIcon"])')
      */
     get saveAsDraftButton() {
@@ -437,15 +437,101 @@ export class WorkbenchPage extends BasePage {
     }
 
     // ─────────────────────────────────────────
+    // SUCCESS TOAST LOCATORS
+    // Different from error toast — uses CheckCircleRoundedIcon
+    // ─────────────────────────────────────────
+
+    /**
+     * Success toast container.
+     * Stable anchor: CheckCircleRoundedIcon data-testid.
+     * DevTools: document.querySelector('svg[data-testid="CheckCircleRoundedIcon"]')
+     *           ?.closest('div.css-196cwgd')
+     *
+     * TODO: if css-196cwgd class changes, use:
+     * div:has(svg[data-testid="CheckCircleRoundedIcon"]):has(div.css-1ebqas8)
+     */
+    get successToast() {
+        return this.page().locator(
+            'div:has(svg[data-testid="CheckCircleRoundedIcon"])'
+        ).filter({ has: this.page().locator('div.css-1ebqas8') }).first();
+    }
+
+    /**
+     * Success toast message text.
+     * Same class as error toast message — css-1ebqas8.
+     * DevTools: document.querySelector('svg[data-testid="CheckCircleRoundedIcon"]')
+     *           ?.closest('div')?.querySelector('div.css-1ebqas8')?.textContent
+     */
+    get successToastMessage() {
+        return this.successToast.locator('div.css-1ebqas8');
+    }
+
+    /**
+     * Verifies success toast appears with expected message.
+     * @param expectedMessage - exact text expected in toast
+     */
+    async verifySuccessToast(expectedMessage: string): Promise<boolean> {
+        console.log(`  → Verifying success toast: "${expectedMessage}"...`);
+        try {
+            await this.successToast.waitFor({ state: 'visible', timeout: 5000 });
+            const actualMessage = await this.successToastMessage.textContent();
+            if (actualMessage?.trim() !== expectedMessage) {
+                console.warn(
+                    `  ⚠ Success toast message mismatch.\n` +
+                    `    Expected: "${expectedMessage}"\n` +
+                    `    Actual:   "${actualMessage?.trim()}"`
+                );
+                return false;
+            }
+            console.log('  ✓ Success toast verified');
+            return true;
+        } catch {
+            console.warn('  ⚠ Success toast did not appear');
+            return false;
+        }
+    }
+
+    // ─────────────────────────────────────────
+    // EXIT WORKBENCH MODAL
+    // Appears when user clicks Back button
+    // ─────────────────────────────────────────
+
+    /**
+     * Exit Workbench confirmation modal.
+     * DevTools: document.querySelector('h5:has-text("Exit Workbench")')
+     *           ?.closest('div.sc-2e6de984-1')
+     *
+     * TODO: if sc-2e6de984-1 class changes, use:
+     * div:has(h5:has-text("Exit Workbench"))
+     */
+    get exitWorkbenchModal() {
+        return this.page().locator(
+            'div.sc-2e6de984-1:has(h5:has-text("Exit Workbench"))'
+        );
+    }
+
+    /**
+     * "Yes, exit" button — confirms exit and navigates back.
+     * DevTools: document.querySelector('div.sc-2e6de984-1:has(h5:has-text("Exit Workbench")) button.btn-primary')
+     */
+    get exitWorkbenchConfirmButton() {
+        return this.exitWorkbenchModal.locator('button.btn-primary');
+    }
+
+    /**
+     * "No, cancel" button — stays on workbench.
+     * DevTools: document.querySelector('div.sc-2e6de984-1:has(h5:has-text("Exit Workbench")) button.btn-tertiary')
+     */
+    get exitWorkbenchCancelButton() {
+        return this.exitWorkbenchModal.locator('button.btn-tertiary');
+    }
+
+    // ─────────────────────────────────────────
     // ACTIONS — Page level
     // ─────────────────────────────────────────
 
     async clickBack(): Promise<void> {
         await this.backButton.click();
-    }
-
-    async clickSaveAsDraft(): Promise<void> {
-        await this.saveAsDraftButton.click();
     }
 
     async clickRewritePrompt(): Promise<void> {
@@ -514,6 +600,39 @@ export class WorkbenchPage extends BasePage {
         }
 
         return found;
+    }
+
+    // ─────────────────────────────────────────
+    // SAVE DRAFT
+    // ─────────────────────────────────────────
+
+    /**
+     * Verifies Save Draft button is enabled.
+     * Button is disabled until at least one response is received.
+     * DevTools: document.querySelector('button:has(svg[data-testid="DraftsIcon"])').disabled
+     */
+    async isSaveAsDraftEnabled(): Promise<boolean> {
+        const count = await this.saveAsDraftButton.count();
+        if (count === 0) return false;
+        return !(await this.saveAsDraftButton.isDisabled());
+    }
+
+    async verifySaveAsDraftEnabled(): Promise<void> {
+        console.log('  → Verifying Save Draft button is enabled...');
+        const enabled = await this.isSaveAsDraftEnabled();
+        if (!enabled) {
+            throw new Error(
+                'Save Draft button is disabled — at least one response must be present'
+            );
+        }
+        console.log('  ✓ Save Draft button is enabled');
+    }
+
+    async clickSaveAsDraft(): Promise<void> {
+        console.log('  → Clicking Save as Draft...');
+        await this.saveAsDraftButton.waitFor({ state: 'visible', timeout: 5000 });
+        await this.saveAsDraftButton.click();
+        console.log('  ✓ Save as Draft clicked');
     }
 
     // ─────────────────────────────────────────
@@ -767,6 +886,38 @@ export class WorkbenchPage extends BasePage {
 
         console.warn(`  ⚠ Retry did not complete within ${timeout}ms`);
         return false;
+    }
+
+    // ─────────────────────────────────────────
+    // EXIT WORKBENCH MODAL ACTION
+    // Appears when user clicks Back button
+    // ─────────────────────────────────────────
+    /**
+     * Clicks Back button, waits for Exit Workbench modal, then confirms exit.
+     * Two-step action: click Back → modal appears → click "Yes, exit".
+     */
+    async clickBackAndConfirmExit(): Promise<void> {
+        console.log('  → Clicking Back button...');
+        await this.backButton.click();
+
+        console.log('  → Waiting for Exit Workbench modal...');
+        await this.exitWorkbenchModal.waitFor({ state: 'visible', timeout: 5000 });
+        console.log('  ✓ Exit Workbench modal appeared');
+
+        console.log('  → Clicking Yes, exit...');
+        await this.exitWorkbenchConfirmButton.click();
+        await this.exitWorkbenchModal.waitFor({ state: 'hidden', timeout: 5000 });
+        console.log('  ✓ Exit confirmed');
+    }
+
+    /**
+     * Cancels the exit — stays on workbench.
+     */
+    async cancelExit(): Promise<void> {
+        console.log('  → Cancelling exit...');
+        await this.exitWorkbenchCancelButton.click();
+        await this.exitWorkbenchModal.waitFor({ state: 'hidden', timeout: 5000 });
+        console.log('  ✓ Exit cancelled — staying on workbench');
     }
 
     // ─────────────────────────────────────────

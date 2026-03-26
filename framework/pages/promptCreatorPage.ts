@@ -216,6 +216,50 @@ export class PromptCreatorPage extends BasePage {
     }
 
     // ─────────────────────────────────────────
+    // LOAD DRAFT MODAL
+    // ─────────────────────────────────────────
+
+    /**
+     * Load Draft modal container.
+     * DevTools: document.querySelector('h5:has-text("Load draft")')
+     *           ?.closest('div.sc-2e6de984-1')
+     *
+     * TODO: if sc-2e6de984-1 class changes, use:
+     * div:has(h5:has-text("Load draft"))
+     */
+    get loadDraftModal() {
+        return this.page().locator('div.sc-2e6de984-1:has(h5:has-text("Load draft"))');
+    }
+
+    get loadDraftModalTitle() {
+        return this.loadDraftModal.locator('h5');
+    }
+
+    /**
+     * "Yes, load draft" button — primary action.
+     * DevTools: document.querySelector('button.btn-primary:has-text("Yes, load draft")')
+     */
+    get loadDraftConfirmButton() {
+        return this.loadDraftModal.locator('button.btn-primary');
+    }
+
+    /**
+     * "Discard, keep empty" button — secondary action.
+     * DevTools: document.querySelector('button.btn-tertiary:has-text("Discard")')
+     */
+    get loadDraftDiscardButton() {
+        return this.loadDraftModal.locator('button.btn-tertiary');
+    }
+
+    /**
+     * Run Draft button — appears instead of Run when draft is loaded.
+     * DevTools: document.querySelector('button.btn-primary:has-text("Run draft")')
+     */
+    get runDraftButton() {
+        return this.page().locator('button.btn-primary:has-text("Run draft")');
+    }
+
+    // ─────────────────────────────────────────
     // ACTIONS — Question Type
     // ─────────────────────────────────────────
 
@@ -316,6 +360,44 @@ export class PromptCreatorPage extends BasePage {
         console.log(`    ✓ Key point saved: "${keyPoint}"`);
     }
 
+    /**
+     * Reads key point chip texts in DRAFT/DISABLED mode.
+     * In draft mode chips have NO remove button — text is the full content
+     * of div.sc-c9e57cf2-2 directly.
+     *
+     * DevTools verify:
+     * [...document.querySelectorAll('div.sc-c9e57cf2-2')]
+     *   .map(d => d.textContent?.trim())
+     *
+     * TODO: if sc-c9e57cf2-2 class changes, use:
+     * div.sc-c9e57cf2-1 > div:not(:has(button)) — chip divs without remove button
+     */
+    async getDraftKeyPointChipTexts(): Promise<string[]> {
+        return this.page()
+            .locator('div.sc-c9e57cf2-2')
+            .evaluateAll((chips: Element[]) =>
+                chips
+                    .map(chip => {
+                        // In draft mode — no remove button, textContent IS the chip text
+                        // In normal mode — textContent includes button text, use text node only
+                        const hasRemoveBtn = chip.querySelector('button.remove-btn') !== null;
+
+                        if (hasRemoveBtn) {
+                            // Normal mode — read direct text node to exclude button text
+                            return Array.from(chip.childNodes)
+                                .filter(node => node.nodeType === Node.TEXT_NODE)
+                                .map(node => node.textContent?.trim() ?? '')
+                                .join('')
+                                .trim();
+                        } else {
+                            // Draft mode — full textContent is the chip text
+                            return chip.textContent?.trim() ?? '';
+                        }
+                    })
+                    .filter(text => text.length > 0)
+            );
+    }
+
     async selectLevel(level: string): Promise<void> {
         await this.levelDropdownInput.waitFor({ state: 'visible', timeout: 10000 });
         await this.levelDropdownInput.click();
@@ -346,4 +428,81 @@ export class PromptCreatorPage extends BasePage {
     async isPromptCreated(): Promise<boolean> {
         return await this.promptCreatedConfirmation.isVisible();
     }
+
+
+    // ─────────────────────────────────────────
+    // LOAD DRAFT MODAL ACTIONS
+    // ─────────────────────────────────────────
+
+    /**
+     * Waits for Load Draft modal to appear after navigating back.
+     */
+    async waitForLoadDraftModal(): Promise<void> {
+        console.log('  → Waiting for Load Draft modal...');
+        await this.loadDraftModal.waitFor({ state: 'visible', timeout: 10000 });
+        console.log('  ✓ Load Draft modal appeared');
+    }
+
+    /**
+     * Clicks "Yes, load draft" and waits for modal to close.
+     */
+    async confirmLoadDraft(): Promise<void> {
+        console.log('  → Confirming load draft...');
+        await this.loadDraftConfirmButton.click();
+        await this.loadDraftModal.waitFor({ state: 'hidden', timeout: 5000 });
+        console.log('  ✓ Draft loaded');
+    }
+
+    /**
+     * Clicks "Discard, keep empty" and waits for modal to close.
+     */
+    async discardDraft(): Promise<void> {
+        console.log('  → Discarding draft...');
+        await this.loadDraftDiscardButton.click();
+        await this.loadDraftModal.waitFor({ state: 'hidden', timeout: 5000 });
+        console.log('  ✓ Draft discarded');
+    }
+
+    /**
+     * Verifies Run Draft button is visible — confirms draft was loaded.
+     * DevTools: document.querySelector('button.btn-primary:has-text("Run draft")')
+     */
+    async verifyRunDraftButtonVisible(): Promise<void> {
+        console.log('  → Verifying Run Draft button visible...');
+        await this.runDraftButton.waitFor({ state: 'visible', timeout: 5000 });
+        console.log('  ✓ Run Draft button visible');
+    }
+
+    /**
+     * Verifies prompt fields are loaded in disabled/read-only mode.
+     * Draft data is pre-filled but not editable.
+     * DevTools: document.querySelector('div.question-textarea textarea').disabled
+     */
+    async verifyDraftFieldsDisabled(): Promise<void> {
+        console.log('  → Verifying draft fields are in disabled/read-only mode...');
+
+        const isDisabled = await this.promptTextarea.evaluate(
+            (el: HTMLTextAreaElement) => el.disabled || el.readOnly
+        );
+
+        if (!isDisabled) {
+            console.warn(
+                '  ⚠ Prompt textarea is not disabled — ' +
+                'draft may not have loaded in read-only mode'
+            );
+        } else {
+            console.log('  ✓ Prompt textarea is disabled/read-only');
+        }
+    }
+
+    /**
+     * Clicks Run Draft button and waits for navigation to workbench.
+     */
+    async clickRunDraft(): Promise<void> {
+        console.log('  → Clicking Run Draft...');
+        await this.runDraftButton.waitFor({ state: 'visible', timeout: 5000 });
+        await this.runDraftButton.click();
+        console.log('  ✓ Run Draft clicked');
+    }
+
 }

@@ -556,6 +556,61 @@ export class WorkbenchService {
         Logger.info('✅ Rewrite blocked during retry verified successfully');
     }
 
+    /**
+     * Verifies Save Draft button is enabled.
+     * Button enables after at least one response is received.
+     */
+    async verifySaveAsDraftEnabled(): Promise<void> {
+        Logger.info('🔍 Verifying Save Draft button is enabled...');
+        await this.workbenchPage.verifySaveAsDraftEnabled();
+    }
+
+    /** Expected toast message after successful draft save */
+    private readonly DRAFT_SAVED_TOAST = 'Prompt saved as draft successfully!';
+
+    /**
+     * Clicks Save as Draft and verifies success toast appears.
+     */
+    async clickSaveAsDraft(): Promise<void> {
+        Logger.info('💾 Saving draft...');
+        await this.workbenchPage.clickSaveAsDraft();
+
+        // Verify success toast confirms draft was saved
+        const toastVerified = await this.workbenchPage.verifySuccessToast(
+            this.DRAFT_SAVED_TOAST
+        );
+        if (!toastVerified) {
+            throw new Error(
+                'Save Draft success toast did not appear — ' +
+                'draft may not have been saved successfully'
+            );
+        }
+
+        Logger.info('✓ Draft saved — success toast confirmed');
+    }
+
+    /**
+     * Clicks Back button, handles Exit Workbench confirmation modal,
+     * then waits for navigation back to prompt creation page.
+     *
+     * Flow: Back button → Exit Workbench modal → Yes, exit → prompt creation page
+     */
+    async clickBackAndWaitForNavigation(): Promise<void> {
+        Logger.info('🔙 Clicking Back and confirming exit...');
+
+        // Handles both the back click AND the exit confirmation modal
+        await this.workbenchPage.clickBackAndConfirmExit();
+
+        // Wait for navigation to prompt creation page after modal closes
+        await this.page.waitForURL(
+            /\/promptCreationWorkbench$/,
+            { timeout: 15000 }
+        );
+        await this.page.waitForLoadState('domcontentloaded');
+
+        Logger.info('  ✓ Navigated back to prompt creation page');
+    }
+
     // ─────────────────────────────────────────
     // DEBUG
     // ─────────────────────────────────────────
