@@ -10,7 +10,7 @@ export default defineConfig({
     timeout: 650000,
 
     use: {
-        headless: false
+        headless: process.env.HEADLESS !== 'false',  // true in CI, false locally
     },
 
     workers: 1,

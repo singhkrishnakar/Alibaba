@@ -30,7 +30,11 @@ export class BrowserManager {
 
         // ✅ Launch browser if not already
         if (!this.browser) {
-            this.browser = await chromium.launch({ headless: false });
+            // ✅ After — reads from environment variable
+            this.browser = await chromium.launch({
+                headless: process.env.HEADLESS !== 'false'  // true in CI, false locally
+            });
+            //this.browser = await chromium.launch({ headless: false });
         }
 
         // ✅ Load session per worker

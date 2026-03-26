@@ -22,7 +22,7 @@ if (RUN_ONLY_PROMPT_ID && selectedPrompts.length === 0) {
 }
 
 for (const data of selectedPrompts) {
-    test.only(
+    test(
         `Save Draft — save, go back, load draft, run: ${data.id}`,
         async ({ testContext }) => {
             const orchestrator = new SaveDraftOrchestrator(testContext);
