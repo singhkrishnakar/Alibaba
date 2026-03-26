@@ -27,4 +27,12 @@ jobs:
       - name: Install and Test
         run: |
           npm install
+
+        # ADD THIS STEP HERE
+      - name: Install Playwright Browsers
+        run: |
+          npx playwright install --with-deps
+          
+      - name: Run Playwright tests
+        run: |
           npx playwright test --project=ui
