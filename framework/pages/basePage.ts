@@ -4,7 +4,7 @@ export abstract class BasePage {
 
   constructor(protected browser: BrowserManager) { }
 
-  protected page() {
+  public page() {
     return this.browser.getPage()
   }
 

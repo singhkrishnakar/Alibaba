@@ -3,6 +3,7 @@ import { BrowserManager } from '../browser/browserManager';
 import { PromptCreatorPage } from '../pages/promptCreatorPage';
 import { prompts } from '../../data/prompts/prompts';
 import { PromptTestData } from '../../types/promptTestData.type';
+import { Logger } from '../utils/Logger';
 
 type QuestionType = 'multipleChoice' | 'essay';
 
@@ -205,6 +206,205 @@ export class PromptCreatorService {
             console.error(`  ⚠ Discipline error: ${error}`);
             if (abortOnFailure) throw error;
             return false;
+        }
+    }
+
+    /**
+     * Verifies that after clicking Rewrite Prompt:
+     * 1. Page navigated to correct URL
+     * 2. All fields are auto-populated with the original data
+     *
+     * Reuses all existing verify methods — no new verification logic.
+     * Called after workbenchService.clickRewritePromptAndWaitForNavigation().
+     */
+    async verifyRewritePromptAutoPopulation(
+        testData: PromptTestData,
+        isDraft = false  // ← pass true when verifying draft-loaded data
+    ): Promise<void> {
+        Logger.info('🔍 Verifying auto-population...');
+        const promptConfig = prompts[testData.id];
+
+        await this.verifyPageLoaded();
+        await this.verifyPromptFilled(promptConfig.promptText);
+
+        await expect(this.promptCreator.solutionProcessTextarea)
+            .toHaveValue(testData.metadata.solutionProcess, { timeout: 5000 });
+        console.log('  ✓ Solution Process verified');
+
+        await expect(this.promptCreator.thinkingProcessTextarea)
+            .toHaveValue(testData.metadata.thinkingProcess, { timeout: 5000 });
+        console.log('  ✓ Thinking Process verified');
+
+        if (testData.metadata.answerUnit) {
+            await expect(this.promptCreator.answerUnitTextarea)
+                .toHaveValue(testData.metadata.answerUnit, { timeout: 5000 });
+            console.log(`  ✓ Answer Unit verified: ${testData.metadata.answerUnit}`);
+        } else {
+            const isChecked = await this.promptCreator.noUnitCheckbox.isChecked()
+                .catch(() => false);
+            if (!isChecked) {
+                console.warn('  ⚠ No unit checkbox expected to be checked but is not');
+            } else {
+                console.log('  ✓ No unit checkbox verified as checked');
+            }
+        }
+
+        await this.verifyLevelSelected(testData.metadata.level);
+        await this.verifyDisciplineSelected(testData.metadata.discipline);
+
+        // ── Key Points — use draft-aware method when loading from draft ──
+        if (isDraft) {
+            await this.verifyDraftKeyPointChips(testData.metadata.knowledgePoints ?? []);
+        } else {
+            await this.verifyKeyPointChips(testData.metadata.knowledgePoints ?? []);
+        }
+
+        if (testData.metadata.questionType === 'essay') {
+            await this.verifyFinalAnswer(testData.metadata.finalAnswer);
+        } else {
+            await this.verifyCorrectAnswer(testData.metadata.correctAnswer);
+            await this.verifyIncorrectAnswers(testData.metadata.incorrectAnswers);
+        }
+
+        Logger.info('✅ All fields verified as auto-populated');
+    }
+
+    // ─────────────────────────────────────────
+    // NEW VERIFY HELPERS — reused by verifyRewritePromptAutoPopulation
+    // ─────────────────────────────────────────
+
+    /**
+     * Verifies Level dropdown shows the expected selected value.
+     * Reads the React Select singleValue div — not the hidden input.
+     *
+     * DevTools: document.querySelector('#level-dropdown .css-1dimb5e-singleValue')?.textContent
+     *
+     * TODO: if css-1dimb5e-singleValue class changes, use:
+     * #level-dropdown div[class*="singleValue"]
+     */
+    async verifyLevelSelected(expectedLevel: string): Promise<void> {
+        const selectedValue = await this.promptCreator.levelDropdownContainer
+            .locator('div[class*="singleValue"]')
+            .textContent();
+
+        if (selectedValue?.trim() !== expectedLevel) {
+            throw new Error(
+                `Level mismatch.\n` +
+                `  Expected: "${expectedLevel}"\n` +
+                `  Actual:   "${selectedValue?.trim()}"`
+            );
+        }
+        console.log(`  ✓ Level verified: ${expectedLevel}`);
+    }
+
+    /**
+     * Verifies Discipline dropdown shows the expected selected value.
+     *
+     * DevTools: document.querySelector('#disciplines-dropdown .css-1dimb5e-singleValue')?.textContent
+     *
+     * TODO: if css-1dimb5e-singleValue class changes, use:
+     * #disciplines-dropdown div[class*="singleValue"]
+     */
+    async verifyDisciplineSelected(expectedDiscipline: string): Promise<void> {
+        const selectedValue = await this.promptCreator.disciplineDropdownContainer
+            .locator('div[class*="singleValue"]')
+            .textContent();
+
+        if (selectedValue?.trim() !== expectedDiscipline) {
+            throw new Error(
+                `Discipline mismatch.\n` +
+                `  Expected: "${expectedDiscipline}"\n` +
+                `  Actual:   "${selectedValue?.trim()}"`
+            );
+        }
+        console.log(`  ✓ Discipline verified: ${expectedDiscipline}`);
+    }
+
+    /**
+     * Verifies all expected key point chips are present.
+     * Uses remove button as anchor — same pattern as addKeyPoint duplicate check.
+     *
+     * DevTools:
+     * [...document.querySelectorAll('button.remove-btn')]
+     *   .map(btn => [...btn.parentElement.childNodes]
+     *     .filter(n => n.nodeType === Node.TEXT_NODE)
+     *     .map(n => n.textContent?.trim()).join(''))
+     */
+    async verifyKeyPointChips(expectedKeyPoints: string[]): Promise<void> {
+        if (!expectedKeyPoints.length) {
+            console.log('  ℹ No key points to verify, skipping');
+            return;
+        }
+
+        /**
+         * Read chip texts directly from the page using button.remove-btn as anchor.
+         * This is the same pattern used in FormFields.getExistingKeyPointChips().
+         * DO NOT use this.promptCreator.keyPointChips — that locator targets
+         * div.sc-c9e57cf2-3 which does not contain remove buttons.
+         *
+         * DevTools verify:
+         * [...document.querySelectorAll('button.remove-btn')]
+         *   .map(btn => [...btn.parentElement.childNodes]
+         *     .filter(n => n.nodeType === Node.TEXT_NODE)
+         *     .map(n => n.textContent?.trim()).join(''))
+         */
+        const actualChips = await this.promptCreator.page()
+            .locator('button.remove-btn')
+            .evaluateAll((buttons: Element[]) =>
+                buttons.map(btn =>
+                    Array.from(btn.parentElement?.childNodes ?? [])
+                        .filter(node => node.nodeType === Node.TEXT_NODE)
+                        .map(node => node.textContent?.trim() ?? '')
+                        .join('')
+                        .trim()
+                ).filter(text => text.length > 0)
+            );
+
+        console.log(`  ℹ Found chips: ${JSON.stringify(actualChips)}`);
+
+        for (const expected of expectedKeyPoints) {
+            const found = actualChips.some(
+                chip => chip.toLowerCase() === expected.trim().toLowerCase()
+            );
+            if (!found) {
+                throw new Error(
+                    `Key point chip "${expected}" not found.\n` +
+                    `  Actual chips: ${JSON.stringify(actualChips)}`
+                );
+            }
+            console.log(`  ✓ Key point chip verified: "${expected}"`);
+        }
+    }
+
+    /**
+     * Verifies key point chips in DRAFT/DISABLED mode.
+     * Uses getDraftKeyPointChipTexts() which handles both
+     * normal chips (with remove button) and draft chips (without remove button).
+     *
+     * Call this instead of verifyKeyPointChips() when verifying draft-loaded data.
+     */
+    async verifyDraftKeyPointChips(expectedKeyPoints: string[]): Promise<void> {
+        if (!expectedKeyPoints.length) {
+            console.log('  ℹ No key points to verify, skipping');
+            return;
+        }
+
+        // Use the draft-aware method that handles missing remove button
+        const actualChips = await this.promptCreator.getDraftKeyPointChipTexts();
+
+        console.log(`  ℹ Found draft chips: ${JSON.stringify(actualChips)}`);
+
+        for (const expected of expectedKeyPoints) {
+            const found = actualChips.some(
+                chip => chip.toLowerCase() === expected.trim().toLowerCase()
+            );
+            if (!found) {
+                throw new Error(
+                    `Draft key point chip "${expected}" not found.\n` +
+                    `  Actual chips: ${JSON.stringify(actualChips)}`
+                );
+            }
+            console.log(`  ✓ Draft key point chip verified: "${expected}"`);
         }
     }
 

@@ -1,5 +1,5 @@
 import { AutomationConfig } from "../../config/config"
-import { PromptTestData } from "../../types/testData.type";
+import { PromptTestData } from "../../types/promptTestData.type";
 import { Logger } from "../utils/Logger"
 import { TestContext } from "../core/TestContext"
 import { expectedResponse } from "../../data/prompts/expectedResponse";
@@ -47,12 +47,17 @@ export class PromptCreatorVerification {
 
             await ctx.dashboardKebabMenu.waitForLoader()
             await ctx.dashboardKebabMenu.launch()
-            await ctx.promptCreator.createPrompt(testData)
+            await ctx.promptCreatorService.createPrompt(testData)
 
             //await ctx.promptCreator.runPrompt()
 
             // ← NOW this works because promptConfig is declared above in the same scope
-            await ctx.promptCreator.verifyPromptFilled(promptConfig.promptText)
+            await ctx.promptCreatorService.verifyPromptFilled(promptConfig.promptText)
+
+            await ctx.promptCreatorService.verifyKeyPointChips(testData.metadata.knowledgePoints)
+
+            // DEBUG: hardcoded wait — remove before merging to main
+            await ctx.browser.waitForTimeout(20000);
 
             //await ctx.workbenchService.verifyNavigation(testData)
 

@@ -53,9 +53,9 @@ export class AlibabaE2EValidation {
 
             await ctx.dashboardKebabMenu.launch()
 
-            await ctx.promptCreator.createPrompt(testData)
+            await ctx.promptCreatorService.createPrompt(testData)
 
-            await ctx.promptCreator.runPrompt()
+            await ctx.promptCreatorService.runPrompt()
 
             await ctx.workbenchService.verifyNavigation(testData)
 
@@ -70,7 +70,7 @@ export class AlibabaE2EValidation {
                 throw new Error("Not all base responses loaded in time")
             }
 
-            await ctx.workbenchService.verifyResponses(expectedResponse)
+            await ctx.workbenchService.verifyBaseResponses(expectedResponse)
 
             // Mark all base responses
             await ctx.workbenchService.markAllBaseResponses(testData)
