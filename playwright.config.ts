@@ -10,7 +10,7 @@ export default defineConfig({
     timeout: 650000,
 
     use: {
-        headless: false
+        headless: process.env.HEADLESS !== 'false',  // true in CI, false locally
     },
 
     workers: 1,
@@ -47,14 +47,10 @@ export default defineConfig({
 
     ],
     reporter: [
-        // HTML report — open automatically after run
-        ['html', { outputFolder: 'playwright-report', open: 'on-failure' }],
-
-        // Terminal output — shows pass/fail live during run
+        ['html', { outputFolder: 'playwright-report', open: 'never' }],
         ['list'],
-
-        // JUnit XML — useful for CI/CD pipelines like Jenkins or GitHub Actions
-        // ['junit', { outputFile: 'test-results/results.xml' }]
+        // ← ADD THIS — required for ReportParser to read results
+        ['json', { outputFile: 'test-results/results.json' }]
     ],
 
 });

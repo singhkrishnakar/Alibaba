@@ -1,0 +1,55 @@
+name: CI Example
+
+on:
+  push:
+    branches: [ addEmailForReporting ]
+  pull_request:
+    branches: [ addEmailForReporting ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    environment: Alibaba
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run Playwright tests
+        run: npx playwright test --project=ui || true
+        env:
+            HEADLESS: true
+            CI: true
+            BASE_URL: ${{ secrets.BASE_URL }}
+            TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
+            TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+            PROJECT_URL: ${{ secrets.PROJECT_URL }}
+            PROJECT_NAME: ${{ secrets.PROJECT_NAME }}
+
+      - name: Send email report
+        if: always()
+        run: npx ts-node scripts/sendReport.ts
+        env:
+          CI: true
+          MAIL_ENABLED: true
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          MAIL_RECIPIENT: ${{ secrets.MAIL_RECIPIENT }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+

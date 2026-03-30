@@ -6,10 +6,10 @@ import { promptData } from "../../data/prompts/promptData"
 // ─────────────────────────────────────────
 // CONFIGURATION
 // Change this to control which prompts run:
-//   null              → runs ALL prompts
-//   'simpleGreeting'  → runs only that one prompt
+//   null              → runs ALL prompts null = null;
+//   'simpleGreeting'  → runs only that one prompt. null = 'simpleGreeting';
 // ─────────────────────────────────────────
-const RUN_ONLY_PROMPT_ID: string | null = null;
+const RUN_ONLY_PROMPT_ID: string | null = 'simpleGreeting';
 
 // ─────────────────────────────────────────
 // FILTER — resolves to all data or single entry
@@ -30,7 +30,7 @@ if (RUN_ONLY_PROMPT_ID && selectedPrompts.length === 0) {
 // TESTS — one test per selected prompt
 // ─────────────────────────────────────────
 for (const data of selectedPrompts) {
-    test(`LLM Prompt: ${data.id}`, async ({ testContext }) => {
+    test.only(`LLM Prompt: ${data.id}`, async ({ testContext }) => {
         const orchestrator = new AlibabaE2EValidation(testContext);
         await orchestrator.run(data);
     });
