@@ -107,6 +107,8 @@ export class PromptCreatorService {
             const promptConfig = prompts[testData.id];
             await this.promptCreator.fillPrompt(promptConfig.promptText);
             console.log('  ✓ Prompt filled');
+            // DEBUG: Wait for field to settle
+            await this.browser.waitForTimeout(2000);
             return true;
         } catch (error) {
             console.error(`  ⚠ Prompt fill error: ${error}`);
@@ -126,6 +128,8 @@ export class PromptCreatorService {
                 await this.promptCreator.fillAnswerUnit(testData.metadata.answerUnit);
                 console.log(`  ✓ Answer unit filled: ${testData.metadata.answerUnit}`);
             }
+            // DEBUG: Wait for field to settle
+            await this.browser.waitForTimeout(1000);
             return true;
         } catch (error) {
             console.error(`  ⚠ Answer unit error: ${error}`);
@@ -139,6 +143,8 @@ export class PromptCreatorService {
         try {
             await this.promptCreator.fillSolutionProcess(testData.metadata.solutionProcess);
             console.log('  ✓ Solution process filled');
+            // DEBUG: Wait for field to settle
+            await this.browser.waitForTimeout(1000);
             return true;
         } catch (error) {
             console.error(`  ⚠ Solution process error: ${error}`);
@@ -152,6 +158,8 @@ export class PromptCreatorService {
         try {
             await this.promptCreator.fillThinkingProcess(testData.metadata.thinkingProcess);
             console.log('  ✓ Thinking process filled');
+            // DEBUG: Wait for field to settle
+            await this.browser.waitForTimeout(1000);
             return true;
         } catch (error) {
             console.error(`  ⚠ Thinking process error: ${error}`);
@@ -468,6 +476,19 @@ export class PromptCreatorService {
 
     async runPrompt(abortOnFailure = true): Promise<boolean> {
         console.log('  ▶️ Running prompt...');
+        
+        // Validate form before running
+        const validationErrors = await this.promptCreator.getAllValidationErrors();
+        if (validationErrors.length > 0) {
+            console.error('❌ Form validation failed. Errors:');
+            validationErrors.forEach((error, index) => {
+                console.error(`  ${index + 1}. ${error}`);
+            });
+            const errorMessage = `Form validation failed:\n${validationErrors.join('\n')}`;
+            if (abortOnFailure) throw new Error(errorMessage);
+            return false;
+        }
+
         const startTime = Date.now();
         try {
             await this.promptCreator.clickRun();
@@ -550,5 +571,16 @@ export class PromptCreatorService {
 
     async verifyRunButtonVisible(): Promise<void> {
         await expect(this.promptCreator.runButton).toBeVisible();
+    }
+
+    // ─────────────────────────────────────────
+    // VALIDATION
+    // ─────────────────────────────────────────
+
+    /**
+     * Gets all validation errors from the prompt creator form
+     */
+    async getAllValidationErrors(): Promise<string[]> {
+        return await this.promptCreator.getAllValidationErrors();
     }
 }

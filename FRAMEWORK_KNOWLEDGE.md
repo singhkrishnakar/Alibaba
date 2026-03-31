@@ -472,7 +472,197 @@ Rules:
 
 ---
 
-## 15. Known Issues and TODOs in Codebase
+## 15. Form Validation System (NEW — Session March 31, 2026)
+
+### Overview
+A comprehensive validation system was implemented to catch mandatory field errors before attempting to run prompts. This prevents silent failures and provides clear error messages.
+
+### Location
+- **Page layer**: `framework/pages/promptCreatorPage.ts`
+- **Service layer**: `framework/services/promptCreatorService.ts`
+- **Orchestrator**: `framework/orchestrators/alibabaE2EOrchestrator.ts`
+
+### Architecture
+```
+promptCreatorPage.getAllValidationErrors()    ← checks DOM for errors
+         ↓
+promptCreatorService.getAllValidationErrors()  ← delegates to page
+         ↓
+alibabaE2EOrchestrator                         ← calls after createPrompt()
+         ↓
+throws Error with detailed error list if any validation fails
+```
+
+### Validation Checks
+```typescript
+// Checks performed by getAllValidationErrors()
+1. Prompt textarea is not empty
+   - Gets actual value: await promptTextarea.inputValue()
+   - If empty: "Prompt: Question is required"
+
+2. Level dropdown has selection
+   - Checks for .error class on container
+   - If error: "Level: Level is required"
+
+3. Discipline dropdown has selection
+   - Checks for .error class on container
+   - If error: "Discipline: Discipline is required"
+
+4. Multiple Choice specific
+   - If question type is MC, checks for incorrect answers
+   - If error: "Incorrect Responses: At least one incorrect answer is required..."
+```
+
+### Usage in Orchestrator
+```typescript
+// After creating prompt, validate before running
+const validationErrors = await ctx.promptCreatorService.getAllValidationErrors()
+if (validationErrors.length > 0) {
+    console.error('❌ Form validation failed. Errors:')
+    validationErrors.forEach((error: string, index: number) => {
+        console.error(`  ${index + 1}. ${error}`)
+    })
+    throw new Error(`Form validation failed:\n${validationErrors.join('\n')}`)
+}
+```
+
+### Output Example
+```
+❌ Form validation failed. Errors:
+  1. Prompt: Question is required
+  2. Level: Level is required
+  3. Discipline: Discipline is required
+```
+
+---
+
+## 16. Complex Prompt Entry Handling (NEW — Session March 31, 2026)
+
+### The Challenge
+When passing complex prompts with LaTeX escape sequences (e.g., `\begin{cases}`, `\int`), the framework must preserve **literal escape sequences** so LaTeX can interpret them. This is different from normal text entry where escape sequences are interpreted.
+
+### Solution Architecture
+
+#### Step 1: Define Prompt with Double-Escaping
+In `data/prompts/prompts.ts`:
+```typescript
+// WRONG — \n becomes actual newline, \\ becomes single backslash
+computeValueOfi: {
+    promptText: "...\\n$$\\nS: \\begin{cases}..."
+}
+
+// CORRECT — extra escaping preserves escape sequences
+computeValueOfi: {
+    promptText: "...\\\\n$$\\\\nS: \\\\\\\\begin{cases}..."
+}
+```
+
+#### Step 2: Fill Prompt Using Direct DOM Manipulation
+In `promptCreatorPage.fillPrompt()`:
+```typescript
+async fillPrompt(text: string): Promise<void> {
+    // 1. Find textarea
+    const textarea = document.querySelector('div.question-textarea textarea')
+    
+    // 2. Set value directly (not character-by-character typing)
+    textarea.value = text
+    
+    // 3. Dispatch React events so React state updates
+    textarea.dispatchEvent(new Event('input', { bubbles: true }))
+    textarea.dispatchEvent(new Event('change', { bubbles: true }))
+    textarea.dispatchEvent(new Event('blur', { bubbles: true }))
+}
+```
+
+**Why direct DOM + events work:**
+- Avoids Playwright's character-by-character typing (which escapes special characters)
+- Preserves exact string as defined
+- Triggers React onChange so component state updates (critical for controlled components)
+
+#### Step 3: Validation Verifies Text Actually Entered
+```typescript
+// Check that textarea has content
+const promptValue = await this.promptTextarea.inputValue()
+if (!promptValue || promptValue.trim() === '') {
+    errors.push('Prompt: Question is required')  // Catches empty entries
+}
+```
+
+### Debug Output When Implementing
+The framework logs detailed information during prompt entry:
+
+```
+[DEBUG] Starting fillPrompt...
+[DEBUG] Textarea is visible
+[DEBUG] Clicked and focused on textarea
+[DEBUG] Direct DOM method success: true
+[DEBUG] Final textarea value length: 360 chars
+[DEBUG] Final value ends with: "$$"  ← Confirms full text entered
+```
+
+### Example: LaTeX Escape Mapping
+| Desired in App | Prompt Data Definition | Why |
+|---|---|---|
+| `\n` (actual newline in LaTeX) | `\\n` | `\` + `n` → preserved as 2 chars → LaTeX sees `\n` |
+| `\\begin` (escaped backslash) | `\\\\begin` | `\` + `\` + `b`... → preserved → LaTeX sees `\\begin` |
+| `\int` (LaTeX integral) | `\\int` | Same as newline — preserved for LaTeX |
+
+### Service Waits After Field Entry
+To allow React to process state updates, the service includes debug waits:
+
+```typescript
+async fillPrompt(testData: PromptTestData): Promise<boolean> {
+    await this.promptCreator.fillPrompt(promptConfig.promptText)
+    await this.browser.waitForTimeout(2000)  // DEBUG: Allow React to settle
+    return true
+}
+```
+
+These can be reduced in production once flow is stable.
+
+---
+
+## 17. Test Timeout Configuration (NEW — Session March 31, 2026)
+
+### Critical Issue
+If Playwright's global `timeout` is shorter than your test's response timeouts, the browser will close while waiting, causing "Target page has been closed" errors.
+
+### Configuration
+In `playwright.config.ts`:
+
+```typescript
+// OLD (INCORRECT) — 650 seconds (10.8 minutes)
+timeout: 650000  // ❌ Too short for complex prompts
+
+// NEW (CORRECT) — 2700 seconds (45 minutes)
+timeout: 2700000  // ✅ Handles 40min frontier timeout + buffer
+```
+
+### Calculation
+```
+Total required timeout = sum of all response timeouts + buffer
+
+If your test data specifies:
+    baseResponseTimeout: 1200000       (20 min)
+    frontierResponseTimeout: 2400000   (40 min)
+
+Then: Playwright timeout should be ≥ 2400000 + 5 minutes buffer = 2700000
+```
+
+### Error Symptom
+Before fix:
+```
+❌ Automation failed after 10.8m
+
+Error: page.waitForTimeout: Target page, context or browser has been closed
+    at BrowserManager.waitForTimeout (browserManager.ts:126)
+```
+
+After fix: Test runs to completion (up to 45 minutes for complex prompts).
+
+---
+
+## 18. Known Issues and TODOs in Codebase
 ```
 1. formHandler.ts — legacy file, being gradually replaced by ReviewFormService
 2. workbenchMenu.ts — renamed to dashboardKebabMenu.ts, old file may still exist

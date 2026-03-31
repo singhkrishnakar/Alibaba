@@ -55,15 +55,30 @@ export class AlibabaE2EValidation {
 
             await ctx.promptCreatorService.createPrompt(testData)
 
+            // ── Validate form after creation ──
+            Logger.info("Validating form fields...")
+            const validationErrors = await ctx.promptCreatorService.getAllValidationErrors()
+            if (validationErrors.length > 0) {
+                console.error('❌ Form validation failed. Errors:')
+                validationErrors.forEach((error: string, index: number) => {
+                    console.error(`  ${index + 1}. ${error}`)
+                })
+                throw new Error(`Form validation failed:\n${validationErrors.join('\n')}`)
+            }
+            Logger.info("✓ Form validation passed")
+
+            // DEBUG: hardcoded wait — remove before merging to main
+            await ctx.browser.waitForTimeout(20000);
+
             await ctx.promptCreatorService.runPrompt()
 
             await ctx.workbenchService.verifyNavigation(testData)
 
             // Wait for base responses
-            const allBaseResponses = await ctx.workbenchService.waitForBaseResponses
-                (
-                    testData.expectedBaseResponsesCount
-                )
+            const allBaseResponses = await ctx.workbenchService.waitForBaseResponses(
+                testData.expectedBaseResponsesCount,
+                testData.responseTimeouts?.baseResponseTimeout ?? 600000
+            );
 
             if (!allBaseResponses) {
                 Logger.error("Not all base responses loaded in time")
@@ -75,6 +90,10 @@ export class AlibabaE2EValidation {
             // Mark all base responses
             await ctx.workbenchService.markAllBaseResponses(testData)
 
+            // ── handles model error modal automatically ──
+            // After marking base responses, check for errors before frontier
+            await ctx.workbenchService.verifyNoBaseModelErrors();
+
             // Read response count after base model responses load
             const { actual: baseResponseCount } = await ctx.workbenchService.getResponseCount(
                 testData.expectedBaseResponsesCount
@@ -83,37 +102,36 @@ export class AlibabaE2EValidation {
             const responseCountAfterBaseModelResponse =
                 baseResponseCount + testData.expectedFrontierResponsesCount;
 
-            console.log("---->" + baseResponseCount + responseCountAfterBaseModelResponse)
+            Logger.info("Base responses: " + baseResponseCount + ", Total after frontier: " + responseCountAfterBaseModelResponse)
 
             const frontierEnabled = await ctx.workbenchService.waitForFrontierButtonEnabled()
 
             if (frontierEnabled) {
-                await ctx.workbenchService.clickFrontierButton()
+                // Click frontier button and handle any model error modal that appears
+                // (modal only appears if modelErrorBlockingEnabled is true AND there are errors)
+                await ctx.workbenchService.clickFrontierButtonWithErrorHandling(testData);
 
                 // Wait for frontier responses to load
-                await ctx.workbenchService.waitForFrontierResponses
-                (
-                    testData.expectedBaseResponsesCount
-                    +
-                    testData.expectedFrontierResponsesCount
+                await ctx.workbenchService.waitForFrontierResponses(
+                    testData.expectedBaseResponsesCount + testData.expectedFrontierResponsesCount,
+                    testData.responseTimeouts?.frontierResponseTimeout ?? 600000
                 );
 
                 // Mark all frontier responses
                 await ctx.workbenchService.markAllFrontierResponses(testData);
 
-                // DEBUG: hardcoded wait — remove before merging to main
-                //await ctx.browser.waitForTimeout(20000);
+                // After marking frontier responses, check for errors before submit
+                await ctx.workbenchService.verifyNoFrontierModelErrors();
+                
+                // This handles: wait for submit button → click it → handle model errors modal if present
+                await ctx.workbenchService.clickSubmitWithErrorHandling(testData);
 
             } else {
                 Logger.error("Frontier failed to enabled")
                 throw new Error("Frontier not gets enabled")
             }
 
-            // Wait for submit button to enable
-            await ctx.workbenchService.waitForSubmitButtonEnabled();
-
-            // Click submit — this opens the ReviewAndSubmitForm modal
-            await ctx.workbenchPage.clickSubmit();
+            // ✅ clickSubmitWithErrorHandling() already clicked submit — no need to click again
 
             await ctx.reviewFormService.reviewAndSubmit(testData)
 

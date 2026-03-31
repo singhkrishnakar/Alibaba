@@ -2,9 +2,9 @@ name: CI Example
 
 on:
   push:
-    branches: [ addEmailForReporting ]
+    branches: [ develop ]
   pull_request:
-    branches: [ addEmailForReporting ]
+    branches: [ develop ]
 
 jobs:
   build-and-test:

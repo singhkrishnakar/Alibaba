@@ -42,11 +42,21 @@ export const promptData: PromptTestData[] = [
                 2: 'Incorrect'
             },
             frontierResponses: {
-                3:  'Correct',
-                4:  'Correct',
-                5:  'Correct',
-                6:  'Incorrect'
+                3: 'Correct',
+                4: 'Correct',
+                5: 'Correct',
+                6: 'Incorrect'
             }
+        },
+        // This test case has model error blocking enabled,
+        //  so if any model errors are present, 
+        // the app should block frontier/submit actions
+        featureFlags: {
+            modelErrorBlockingEnabled: true  // change to false if project has this disabled
+        },
+        responseTimeouts: {
+            baseResponseTimeout: 600000,   // 10 min — simple prompt
+            frontierResponseTimeout: 600000    // 10 min — simple prompt
         }
     },
     {
@@ -61,7 +71,13 @@ export const promptData: PromptTestData[] = [
         workbenchMarking: allCorrect(
             modelResponsesCount.default.baseModelResponsesCount +
             modelResponsesCount.default.frontierModelResponsesCount
-        )
+        ),
+        // This test case has model error blocking enabled,
+        //  so if any model errors are present, 
+        // the app should block frontier/submit actions
+        featureFlags: {
+            modelErrorBlockingEnabled: true  // change to false if project has this disabled
+        }
     },
     {
         id: 'tellAboutYourself',
@@ -79,11 +95,50 @@ export const promptData: PromptTestData[] = [
                 2: 'Incorrect'
             },
             frontierResponses: {
-                3:  'Correct',
-                4:  'Correct',
-                5:  'Correct',
-                6:  'Incorrect'
+                3: 'Correct',
+                4: 'Correct',
+                5: 'Correct',
+                6: 'Incorrect'
             }
+        },
+        // This test case has model error blocking enabled,
+        //  so if any model errors are present, 
+        // the app should block frontier/submit actions
+        featureFlags: {
+            modelErrorBlockingEnabled: true  // change to false if project has this disabled
         }
-    }
+    },
+    {
+        id: 'computeValueOfi',
+        configModelResponsesCount: modelResponsesCount.reduced,
+        expectedResponse: expectedResponse.computeValueOfi,
+        expectedBaseResponsesCount: modelResponsesCount.reduced.baseModelResponsesCount,
+        expectedFrontierResponsesCount: modelResponsesCount.reduced.frontierModelResponsesCount,
+        metadata: metadata.chemistryUndergrad,
+
+        // Mark responses 1,2,3 as Correct and 4,5 as Incorrect for base
+        // Mark all frontier as Correct
+        workbenchMarking: {
+            baseResponses: {
+                1: 'Correct',
+                2: 'Incorrect'
+            },
+            frontierResponses: {
+                3: 'Correct',
+                4: 'Correct',
+                5: 'Correct',
+                6: 'Incorrect'
+            }
+        },
+        // This test case has model error blocking enabled,
+        //  so if any model errors are present, 
+        // the app should block frontier/submit actions
+        featureFlags: {
+            modelErrorBlockingEnabled: true  // change to false if project has this disabled
+        },
+        responseTimeouts: {
+            baseResponseTimeout: 1600000,  // 27 min — complex prompt
+            frontierResponseTimeout: 2400000   // 40 min — very complex prompt
+        }
+    },
 ];

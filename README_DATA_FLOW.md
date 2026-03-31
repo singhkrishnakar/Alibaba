@@ -442,6 +442,126 @@ expectedResponse.ts ──┤
                       │
 responseMarking.ts  ──┘
 ```
+
+---
+
+## CRITICAL: Passing Complex Prompts with LaTeX
+
+### The Problem
+When passing prompts containing LaTeX with escape sequences (like `\begin{cases}`, `\int`, etc.), the browser incorrectly interprets the escaping during text entry, resulting in:
+
+❌ **WRONG** (what happens without proper escaping):
 ```
+Compute the value of $I$ from the system
+$$
+S: \begin{cases}
+I+J = \int_0^1 ...
+```
+
+✅ **CORRECT** (what the app expects):
+```
+Compute the value of $I$ from the system\n$$\nS: \\begin{cases}\nI+J = \\int_0^1 ...
+```
+
+### Solution: Double-Escape in `data/prompts/prompts.ts`
+
+When defining complex prompts with LaTeX, apply extra escaping:
+
+```typescript
+// WRONG — browser will interpret \n as newline, \\ as single backslash
+computeValueOfi: {
+    promptText: "Compute the value of $I$...\n$$\nS: \\begin{cases}..."
+}
+
+// CORRECT — browser receives literal \n and \\begin which LaTeX can interpret
+computeValueOfi: {
+    promptText: "Compute the value of $I$...\\n$$\\nS: \\\\begin{cases}..."
+}
+```
+
+### Mapping Examples
+
+| What you want in app | What to write in prompts.ts | Reason |
+|---|---|---|
+| Literal newline in LaTeX formula | `\\n` | `\` + `n` stays as 2 characters, then interpreted by LaTeX |
+| Literal backslash before `begin` | `\\\\` | `\` + `\` + `b` + `e` + ... → LaTeX sees `\\begin` |
+| Literal double backslash `\\\\` | `\\\\\\\\` | Each `\\` becomes `\` after JavaScript parsing |
+
+### Implementation in `promptCreatorPage.fillPrompt()`
+
+The framework uses direct DOM manipulation + React event dispatch:
+
+```typescript
+async fillPrompt(text: string): Promise<void> {
+    // Set value directly on textarea element
+    await page.evaluate((value: string) => {
+        const textarea = document.querySelector('div.question-textarea textarea');
+        textarea.value = value;
+        
+        // Dispatch React events so React state updates
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        textarea.dispatchEvent(new Event('change', { bubbles: true }));
+    }, text);
+}
+```
+
+This approach:
+1. Bypasses Playwright's character-by-character typing (which escapes special chars)
+2. Preserves exact string as defined in prompts.ts
+3. Triggers React's onChange so the component state updates
+
+### Debug Output
+
+When adding complex prompts, check the debug logs:
+
+```
+[DEBUG] Input text length: 360 chars
+[DEBUG] Textarea maxLength: -1  (no char limit)
+[DEBUG] Final textarea value length: 360 chars
+[DEBUG] Final value ends with: "$$"  ✓ Full text entered
+```
+
+If "Final textarea value length: 0", the text didn't enter — check:
+1. Is the textarea selector correct?
+2. Are React events properly dispatched?
+3. Is there a character limit on the textarea?
+
+### Validation
+
+After prompt entry, validation runs to ensure mandatory fields are filled:
+
+```typescript
+async getAllValidationErrors(): Promise<string[]> {
+    const promptValue = await this.promptTextarea.inputValue();
+    if (!promptValue || promptValue.trim() === '') {
+        errors.push('Prompt: Question is required');
+    }
+    // Also check Level and Discipline dropdowns
+}
+```
+
+This catches empty prompts **before** attempting to run, preventing silent failures.
+
+---
+
+## Test Timeout Configuration
+
+For complex prompts that require long LLM processing times, ensure `playwright.config.ts` has sufficient timeout:
+
+```typescript
+// Default: 650000ms (10.8 minutes) — TOO SHORT for complex prompts
+// Recommended: 2700000ms (45 minutes) — handles 40min frontier responses + buffer
+timeout: 2700000
+```
+
+If your test data specifies:
+```typescript
+responseTimeouts: {
+    baseResponseTimeout: 1200000,    // 20 min
+    frontierResponseTimeout: 2400000  // 40 min
+}
+```
+
+Then Playwright timeout must be **greater than** the sum of all timeouts plus buffer.
 
 Save this as `README_DATA_FLOW.md` in your project root — it now reflects the discriminated union type change, the workbench marking config, and all the key rules built up through this session.
