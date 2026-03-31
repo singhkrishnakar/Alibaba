@@ -12,6 +12,10 @@ export const expectedResponse: Record<string, ExpectedPromptResponse> = {
 
     modelFailingPrompt: {
         expectedResponseText: "Model Error"
+    },
+
+    computeValueOfi: {
+        expectedResponseText: "$\\frac{\\pi^2\\log(2)-7\\zeta(3)-8\\pi G}{64}$"
     }
 
 };

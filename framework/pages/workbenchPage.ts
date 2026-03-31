@@ -400,6 +400,37 @@ export class WorkbenchPage extends BasePage {
         );
     }
 
+    // ─────────────────────────────────────────
+    // MODEL ERRORS DETECTED MODAL
+    // Appears when user clicks frontier/submit while errors exist in responses
+    // ─────────────────────────────────────────
+
+    /**
+     * Model Errors Detected modal container.
+     * DevTools: document.querySelector('h5:has-text("Model Errors Detected")')
+     *           ?.closest('div.sc-2e6de984-1')
+     *
+     * TODO: if sc-2e6de984-1 changes, use:
+     * div:has(h5:has-text("Model Errors Detected"))
+     */
+    get modelErrorsModal() {
+        return this.page().locator(
+            'div.sc-2e6de984-1:has(h5:has-text("Model Errors Detected"))'
+        );
+    }
+
+    get modelErrorsModalTitle() {
+        return this.modelErrorsModal.locator('h5');
+    }
+
+    /**
+     * "Got it" button inside the Model Errors Detected modal.
+     * DevTools: document.querySelector('div.sc-2e6de984-1:has(h5:has-text("Model Errors Detected")) button.btn-primary')
+     */
+    get modelErrorsGotItButton() {
+        return this.modelErrorsModal.locator('button.btn-primary');
+    }
+
 
     // ─────────────────────────────────────────
     // TOAST / NOTIFICATION LOCATORS
@@ -1125,6 +1156,114 @@ export class WorkbenchPage extends BasePage {
             trimmed.endsWith('....') ||    // sometimes 4 dots
             trimmed.includes('...')        // ... anywhere near end
         );
+    }
+
+    // ─────────────────────────────────────────
+    // MODEL ERROR RESPONSE DETECTION
+    // Response text starts with "Model Error:" when generation failed
+    // ─────────────────────────────────────────
+
+    /**
+     * Finds all base response indexes that contain a Model Error.
+     * Model errors start with "Model Error:" in the response text span.
+     *
+     * DevTools verify:
+     * [...document.querySelectorAll('input[name^="response-original-"]')]
+     *   .map(i => i.name)
+     *   .filter((v, i, a) => a.indexOf(v) === i)  // unique names
+     *   .filter(name => {
+     *     const wrapper = document.querySelector(`div.sc-6e40ec64-19:has(input[name="${name}"])`)
+     *       ?.closest('div.sc-6e40ec64-18');
+     *     return wrapper?.querySelector('div.sc-6e40ec64-22 span')
+     *       ?.textContent?.includes('Model Error:');
+     *   })
+     */
+    async getBaseResponsesWithModelError(): Promise<number[]> {
+        const indexes = await this.getBaseResponseNameIndexes();
+        const errorIndexes: number[] = [];
+
+        for (const index of indexes) {
+            const hasError = await this.page().evaluate((idx: number) => {
+                // Find all radio inputs with this name
+                const inputs = Array.from(
+                    document.querySelectorAll(`input[name="response-original-${idx}"]`)
+                );
+                if (!inputs.length) return false;
+
+                // Walk up to the response wrapper div
+                const wrapper = inputs[0]
+                    ?.closest('div.sc-6e40ec64-15')
+                    ?.closest('div.sc-6e40ec64-18');
+
+                if (!wrapper) return false;
+
+                const text = wrapper.querySelector('div.sc-6e40ec64-22.bkcbqC span')
+                    ?.textContent?.trim() ?? '';
+
+                return text.startsWith('Model Error:') || text.includes('Model Error:');
+            }, index);
+
+            if (hasError) {
+                errorIndexes.push(index);
+            }
+        }
+
+        return errorIndexes;
+    }
+
+    /**
+     * Finds all frontier response indexes that contain a Model Error.
+     */
+    async getFrontierResponsesWithModelError(): Promise<number[]> {
+        const indexes = await this.getFrontierResponseNameIndexes();
+        const errorIndexes: number[] = [];
+
+        for (const index of indexes) {
+            const hasError = await this.page().evaluate((idx: number) => {
+                const inputs = Array.from(
+                    document.querySelectorAll(`input[name="response-frontier-${idx}"]`)
+                );
+                if (!inputs.length) return false;
+
+                const wrapper = inputs[0]
+                    ?.closest('div.sc-6e40ec64-15')
+                    ?.closest('div.sc-6e40ec64-18');
+
+                if (!wrapper) return false;
+
+                const text = wrapper.querySelector('div.sc-6e40ec64-22.bkcbqC span')
+                    ?.textContent?.trim() ?? '';
+
+                return text.startsWith('Model Error:') || text.includes('Model Error:');
+            }, index);
+
+            if (hasError) {
+                errorIndexes.push(index);
+            }
+        }
+
+        return errorIndexes;
+    }
+
+    // ─────────────────────────────────────────
+    // MODEL ERRORS MODAL ACTIONS
+    // ─────────────────────────────────────────
+
+    /**
+     * Checks if Model Errors Detected modal is visible.
+     */
+    async isModelErrorsModalVisible(): Promise<boolean> {
+        return this.modelErrorsModal.isVisible().catch(() => false);
+    }
+
+    /**
+     * Clicks "Got it" on the Model Errors Detected modal and waits for it to close.
+     */
+    async dismissModelErrorsModal(): Promise<void> {
+        console.log('  → Dismissing Model Errors Detected modal...');
+        await this.modelErrorsGotItButton.click();
+        await this.modelErrorsModal.waitFor({ state: 'hidden', timeout: 5000 });
+        console.log('  ✓ Model Errors modal dismissed');
     }
 
 

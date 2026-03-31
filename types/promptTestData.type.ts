@@ -29,4 +29,28 @@ export interface PromptTestData {
     // If not provided, all responses will be marked as 'Correct' by default
     workbenchMarking?: WorkbenchMarkingConfig;
 
+    /**
+     * Project-level feature flags.
+     * modelErrorBlockingEnabled: true  → app blocks frontier/submit when model errors exist
+     *                             false → app allows proceeding despite model errors
+     */
+    featureFlags?: ProjectFeatureFlags;
+
+    /**
+    * Response wait timeouts in milliseconds.
+    * Defaults used if not provided:
+    *   baseResponseTimeout:     600000  (10 min) — simple prompts
+    *   frontierResponseTimeout: 600000  (10 min) — simple prompts
+    * For complex prompts set up to 2400000 (40 min)
+    */
+    responseTimeouts?: ResponseTimeoutConfig;
+}
+
+export interface ProjectFeatureFlags {
+    modelErrorBlockingEnabled: boolean;
+}
+
+export interface ResponseTimeoutConfig {
+    baseResponseTimeout?: number;      // ms to wait for base responses
+    frontierResponseTimeout?: number;  // ms to wait for frontier responses
 }

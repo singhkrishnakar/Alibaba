@@ -95,13 +95,48 @@ export class WorkbenchService {
     // WAITING FOR RESPONSES
     // ─────────────────────────────────────────
 
-    async waitForBaseResponses(expectedCount: number, timeout = 600000): Promise<boolean> {
-        Logger.info(`⏳ Waiting for ${expectedCount} base responses...`);
+    /**
+     * Resolves base response timeout from testData.
+     * Falls back to 600000ms (10 min) if not configured.
+     */
+    private resolveBaseTimeout(testData: PromptTestData): number {
+        return testData.responseTimeouts?.baseResponseTimeout ?? 600000;
+    }
+
+    /**
+     * Resolves frontier response timeout from testData.
+     * Falls back to 600000ms (10 min) if not configured.
+     */
+    private resolveFrontierTimeout(testData: PromptTestData): number {
+        return testData.responseTimeouts?.frontierResponseTimeout ?? 600000;
+    }
+
+    /**
+     * Waits for base responses using timeout from testData.
+     * Pass testData instead of raw expectedCount to get configured timeout.
+     */
+    async waitForBaseResponses(
+        expectedCount: number,
+        timeout = 600000
+    ): Promise<boolean> {
+        Logger.info(
+            `⏳ Waiting for ${expectedCount} base responses ` +
+            `(timeout: ${(timeout / 60000).toFixed(0)} min)...`
+        );
         return this.pollForResponseCount(expectedCount, timeout, 'base');
     }
 
-    async waitForFrontierResponses(expectedCount: number, timeout = 600000): Promise<boolean> {
-        Logger.info(`⏳ Waiting for ${expectedCount} frontier responses...`);
+    /**
+     * Waits for frontier responses using timeout from testData.
+     */
+    async waitForFrontierResponses(
+        expectedCount: number,
+        timeout = 600000
+    ): Promise<boolean> {
+        Logger.info(
+            `⏳ Waiting for ${expectedCount} frontier responses ` +
+            `(timeout: ${(timeout / 60000).toFixed(0)} min)...`
+        );
         return this.pollForResponseCount(expectedCount, timeout, 'frontier');
     }
 
@@ -200,6 +235,50 @@ export class WorkbenchService {
         }
 
         Logger.info(`✓ All ${indexes.length} frontier responses marked`);
+    }
+
+    /**
+     * Marks a specific base response after it has been retried.
+     * Use this when a single base response needs re-marking after retry.
+     * 
+     * @param testData - Full test data object containing workbenchMarking config
+     * @param responseIndex - The specific response index to mark
+     * @param defaultStatus - Used if no marking map defined for this index
+     */
+    async markSpecificBaseResponse(
+        testData: PromptTestData,
+        responseIndex: number,
+        defaultStatus: 'Correct' | 'Incorrect' = 'Correct'
+    ): Promise<void> {
+        Logger.info(`📝 Re-marking base response ${responseIndex} after retry...`);
+
+        const markingMap = testData.workbenchMarking?.baseResponses;
+        const status = markingMap?.[responseIndex] ?? defaultStatus;
+
+        await this.workbenchPage.markBaseResponse(responseIndex, status);
+        Logger.info(`✓ Base response ${responseIndex} marked as ${status}`);
+    }
+
+    /**
+     * Marks a specific frontier response after it has been retried.
+     * Use this when a single frontier response needs re-marking after retry.
+     * 
+     * @param testData - Full test data object containing workbenchMarking config
+     * @param responseIndex - The specific response index to mark
+     * @param defaultStatus - Used if no marking map defined for this index
+     */
+    async markSpecificFrontierResponse(
+        testData: PromptTestData,
+        responseIndex: number,
+        defaultStatus: 'Correct' | 'Incorrect' = 'Correct'
+    ): Promise<void> {
+        Logger.info(`📝 Re-marking frontier response ${responseIndex} after retry...`);
+
+        const markingMap = testData.workbenchMarking?.frontierResponses;
+        const status = markingMap?.[responseIndex] ?? defaultStatus;
+
+        await this.workbenchPage.markFrontierResponse(responseIndex, status);
+        Logger.info(`✓ Frontier response ${responseIndex} marked as ${status}`);
     }
 
     // ─────────────────────────────────────────
@@ -610,6 +689,252 @@ export class WorkbenchService {
 
         Logger.info('  ✓ Navigated back to prompt creation page');
     }
+
+    // ─────────────────────────────────────────
+    // MODEL ERROR HANDLING
+    // ─────────────────────────────────────────
+
+    /**
+     * Checks all base responses for model errors and retries each one.
+     * Waits for retry to complete before moving to next errored response.
+     *
+     * @param modelErrorBlockingEnabled - from testData.featureFlags
+     */
+    async resolveBaseModelErrors(
+        testData: PromptTestData,
+        modelErrorBlockingEnabled: boolean
+    ): Promise<void> {
+        Logger.info('🔍 Checking base responses for model errors...');
+
+        const errorIndexes = await this.workbenchPage.getBaseResponsesWithModelError();
+
+        if (errorIndexes.length === 0) {
+            Logger.info('  ✓ No model errors in base responses');
+            return;
+        }
+
+        Logger.info(`  ⚠ Model errors found in base responses: [${errorIndexes.join(', ')}]`);
+
+        if (!modelErrorBlockingEnabled) {
+            console.log('  ℹ Model error blocking is DISABLED for this project — skipping retry');
+            return;
+        }
+
+        // Use the base response timeout from testData for retry waiting
+        const retryTimeout = testData.responseTimeouts?.baseResponseTimeout ?? 600000;
+        Logger.info(`  ⏳ Using timeout ${(retryTimeout / 60000).toFixed(0)}min for retried base responses`);
+
+        // Retry each errored response
+        for (const index of errorIndexes) {
+            Logger.info(`  → Retrying base response ${index}...`);
+            await this.workbenchPage.clickRetryButton(index, 'base');
+
+            // Verify spinning started
+            const spinning = await this.workbenchPage.verifyRetryIsSpinning(index, 'base');
+            if (!spinning) {
+                console.warn(`  ⚠ Retry did not start for base response ${index}`);
+            }
+
+            // Wait for retry to complete using the same timeout as the initial response
+            await this.workbenchPage.waitForRetryToComplete(index, 'base', retryTimeout);
+            Logger.info(`  ✓ Base response ${index} retried successfully`);
+
+            // Mark the retried response with its configured status
+            await this.markSpecificBaseResponse(testData, index);
+        }
+
+        // Verify no more errors after retrying
+        const remainingErrors = await this.workbenchPage.getBaseResponsesWithModelError();
+        if (remainingErrors.length > 0) {
+            throw new Error(
+                `Model errors still present after retry in base responses: [${remainingErrors.join(', ')}]. ` +
+                `Cannot proceed to frontier.`
+            );
+        }
+
+        Logger.info('  ✓ All base model errors resolved');
+    }
+
+    /**
+     * Checks all frontier responses for model errors and retries each one.
+     * Uses timeout from testData to support complex prompts that take 40+ minutes.
+     */
+    async resolveFrontierModelErrors(
+        testData: PromptTestData,
+        modelErrorBlockingEnabled: boolean
+    ): Promise<void> {
+        Logger.info('🔍 Checking frontier responses for model errors...');
+
+        const errorIndexes = await this.workbenchPage.getFrontierResponsesWithModelError();
+
+        if (errorIndexes.length === 0) {
+            Logger.info('  ✓ No model errors in frontier responses');
+            return;
+        }
+
+        Logger.info(`  ⚠ Model errors found in frontier responses: [${errorIndexes.join(', ')}]`);
+
+        if (!modelErrorBlockingEnabled) {
+            console.log('  ℹ Model error blocking is DISABLED for this project — skipping retry');
+            return;
+        }
+
+        // Use the frontier response timeout from testData for retry waiting
+        const retryTimeout = testData.responseTimeouts?.frontierResponseTimeout ?? 600000;
+        Logger.info(`  ⏳ Using timeout ${(retryTimeout / 60000).toFixed(0)}min for retried frontier responses`);
+
+        for (const index of errorIndexes) {
+            Logger.info(`  → Retrying frontier response ${index}...`);
+            await this.workbenchPage.clickRetryButton(index, 'frontier');
+
+            const spinning = await this.workbenchPage.verifyRetryIsSpinning(index, 'frontier');
+            if (!spinning) {
+                console.warn(`  ⚠ Retry did not start for frontier response ${index}`);
+            }
+
+            // Wait for retry to complete using the same timeout as the initial response
+            await this.workbenchPage.waitForRetryToComplete(index, 'frontier', retryTimeout);
+            Logger.info(`  ✓ Frontier response ${index} retried successfully`);
+
+            // Mark the retried response with its configured status
+            await this.markSpecificFrontierResponse(testData, index);
+        }
+
+        const remainingErrors = await this.workbenchPage.getFrontierResponsesWithModelError();
+        if (remainingErrors.length > 0) {
+            throw new Error(
+                `Model errors still present after retry in frontier responses: [${remainingErrors.join(', ')}]. ` +
+                `Cannot proceed to submit.`
+            );
+        }
+
+        Logger.info('  ✓ All frontier model errors resolved');
+    }
+
+    /**
+     * Handles the Model Errors Detected modal if it appears after clicking frontier/submit.
+     * If modal appears:
+     *   - feature enabled  → dismiss modal → retry errored responses
+     *   - feature disabled → should not appear — if it does, throw unexpected error
+     *
+     * @param type            - 'frontier' or 'submit' — which button was clicked
+     * @param modelErrorBlockingEnabled - from testData.featureFlags
+     */
+    async handleModelErrorsModalIfPresent(
+        testData: PromptTestData,
+        type: 'frontier' | 'submit',
+        modelErrorBlockingEnabled: boolean
+    ): Promise<void> {
+        // Short wait to allow modal to appear if it will
+        await this.context.browser.waitForTimeout(1000);
+
+        const modalVisible = await this.workbenchPage.isModelErrorsModalVisible();
+
+        if (!modalVisible) {
+            console.log(`  ✓ No Model Errors modal after clicking ${type} — proceeding`);
+            return;
+        }
+
+        if (!modelErrorBlockingEnabled) {
+            throw new Error(
+                `Model Errors Detected modal appeared but modelErrorBlockingEnabled is false. ` +
+                `This is unexpected — check project configuration.`
+            );
+        }
+
+        Logger.info(`  ⚠ Model Errors Detected modal appeared after clicking ${type}`);
+        Logger.info('  → Dismissing modal and resolving errors...');
+
+        // Dismiss the modal
+        await this.workbenchPage.dismissModelErrorsModal();
+
+        // Resolve errors based on which button was clicked
+        if (type === 'frontier') {
+            await this.resolveBaseModelErrors(testData, modelErrorBlockingEnabled);
+        } else {
+            await this.resolveFrontierModelErrors(testData, modelErrorBlockingEnabled);
+        }
+    }
+
+    /**
+     * Clicks frontier button and handles Model Errors modal if it appears.
+     */
+    async clickFrontierButtonWithErrorHandling(testData: PromptTestData): Promise<void> {
+        const blocking = testData.featureFlags?.modelErrorBlockingEnabled ?? false;
+
+        await this.workbenchPage.clickFrontierButton();
+
+        await this.handleModelErrorsModalIfPresent(testData, 'frontier', blocking);
+    }
+
+    /**
+     * Waits for submit button to enable and handles Model Errors modal if it appears on click.
+     */
+    async clickSubmitWithErrorHandling(testData: PromptTestData): Promise<void> {
+        const blocking = testData.featureFlags?.modelErrorBlockingEnabled ?? false;
+
+        await this.waitForSubmitButtonEnabled();
+        await this.workbenchPage.clickSubmit();
+
+        await this.handleModelErrorsModalIfPresent(testData, 'submit', blocking);
+    }
+
+    /**
+     * Verifies no model errors exist in base responses.
+     * Call after waiting for all responses to load.
+     */
+    /**
+     * Verifies no model errors exist in base responses.
+     * Uses 10s timeout to fail fast if DOM queries hang.
+     */
+    async verifyNoBaseModelErrors(timeout = 10000): Promise<boolean> {
+        Logger.info('🔍 Verifying no model errors in base responses...');
+        try {
+            const errors = await Promise.race([
+                this.workbenchPage.getBaseResponsesWithModelError(),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('verifyNoBaseModelErrors timeout')), timeout)
+                )
+            ]) as number[];
+            
+            if (errors.length > 0) {
+                console.warn(`  ⚠ Model errors found in base responses: [${errors.join(', ')}]`);
+                return false;
+            }
+            Logger.info('  ✓ No model errors in base responses');
+            return true;
+        } catch (error) {
+            console.error('  ❌ Error verifying base model errors:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Verifies no model errors exist in frontier responses.
+     * Uses 10s timeout to fail fast if DOM queries hang.
+     */
+    async verifyNoFrontierModelErrors(timeout = 10000): Promise<boolean> {
+        Logger.info('🔍 Verifying no model errors in frontier responses...');
+        try {
+            const errors = await Promise.race([
+                this.workbenchPage.getFrontierResponsesWithModelError(),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('verifyNoFrontierModelErrors timeout')), timeout)
+                )
+            ]) as number[];
+            
+            if (errors.length > 0) {
+                console.warn(`  ⚠ Model errors found in frontier responses: [${errors.join(', ')}]`);
+                return false;
+            }
+            Logger.info('  ✓ No model errors in frontier responses');
+            return true;
+        } catch (error) {
+            console.error('  ❌ Error verifying frontier model errors:', error);
+            throw error;
+        }
+    }
+
 
     // ─────────────────────────────────────────
     // DEBUG

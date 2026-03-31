@@ -9,7 +9,7 @@ import { promptData } from "../../data/prompts/promptData"
 //   null              → runs ALL prompts null = null;
 //   'simpleGreeting'  → runs only that one prompt. null = 'simpleGreeting';
 // ─────────────────────────────────────────
-const RUN_ONLY_PROMPT_ID: string | null = 'simpleGreeting';
+const RUN_ONLY_PROMPT_ID: string | null = 'computeValueOfi';  // ✅ set to null to run all prompts
 
 // ─────────────────────────────────────────
 // FILTER — resolves to all data or single entry

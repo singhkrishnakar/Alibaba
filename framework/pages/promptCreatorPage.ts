@@ -276,10 +276,71 @@ export class PromptCreatorPage extends BasePage {
     // ─────────────────────────────────────────
 
     async fillPrompt(text: string): Promise<void> {
+        console.log('    [DEBUG] Starting fillPrompt...');
+        console.log(`    [DEBUG] Input text length: ${text.length} chars`);
+        console.log(`    [DEBUG] Input text ends with: "${text.substring(text.length - 50)}"`);
+        
         // promptTextarea works for both MC and Essay — no branching needed
         await this.promptTextarea.waitFor({ state: 'visible', timeout: 15000 });
+        console.log('    [DEBUG] Textarea is visible');
+        
+        // Check if textarea has maxlength attribute
+        const maxLength = await this.page().evaluate(() => {
+            const textarea = document.querySelector('div.question-textarea textarea') as HTMLTextAreaElement;
+            return textarea?.maxLength ?? -1;
+        });
+        console.log(`    [DEBUG] Textarea maxLength: ${maxLength}`);
+        
         await this.promptTextarea.click();
-        await this.promptTextarea.fill(text);
+        await this.promptTextarea.focus();
+        console.log('    [DEBUG] Clicked and focused on textarea');
+        
+        // Method: Direct DOM value setting with React hook access
+        const success = await this.page().evaluate((value: string) => {
+            const textarea = document.querySelector('div.question-textarea textarea') as HTMLTextAreaElement;
+            if (!textarea) {
+                console.log('[EVAL] Textarea not found');
+                return false;
+            }
+            
+            console.log(`[EVAL] Setting value of length: ${value.length}`);
+            
+            // Set the value directly
+            textarea.value = value;
+            console.log(`[EVAL] Set textarea.value, actual length now: ${textarea.value.length}`);
+            console.log(`[EVAL] Value ends with: "${textarea.value.substring(textarea.value.length - 50)}"`);
+            
+            // Dispatch comprehensive suite of events
+            const events = ['input', 'change', 'blur', 'keydown', 'keyup'];
+            events.forEach(eventName => {
+                const event = new Event(eventName, { bubbles: true });
+                Object.defineProperty(event, 'target', { value: textarea, enumerable: true });
+                textarea.dispatchEvent(event);
+            });
+            console.log('[EVAL] Dispatched events');
+            
+            return textarea.value.length > 0;
+        }, text);
+        
+        console.log(`    [DEBUG] Direct DOM method success: ${success}`);
+        await this.page().waitForTimeout(1000);
+        
+        // Verify the result
+        const finalValue = await this.promptTextarea.inputValue().catch(() => '');
+        console.log(`    [DEBUG] Final textarea value length: ${finalValue.length} chars`);
+        console.log(`    [DEBUG] Final value ends with: "${finalValue.substring(finalValue.length - 50)}"`);
+        
+        if (finalValue.length === 0) {
+            console.warn('    [WARNING] Textarea is empty, trying fallback method...');
+            try {
+                await this.promptTextarea.fill(text);
+                await this.page().waitForTimeout(1000);
+                const fallbackValue = await this.promptTextarea.inputValue().catch(() => '');
+                console.log(`    [DEBUG] Fallback fill result: ${fallbackValue.length} chars`);
+            } catch (e) {
+                console.error(`    [ERROR] Fallback fill failed: ${e}`);
+            }
+        }
     }
 
     async fillAnswerUnit(unit: string): Promise<void> {
@@ -505,4 +566,107 @@ export class PromptCreatorPage extends BasePage {
         console.log('  ✓ Run Draft clicked');
     }
 
+    // ─────────────────────────────────────────
+    // VALIDATION — Check for errors
+    // ─────────────────────────────────────────
+
+    /**
+     * Checks if prompt field has validation error
+     */
+    async hasPromptError(): Promise<boolean> {
+        const errorElement = this.page().locator('.isPromptError');
+        return await errorElement.isVisible().catch(() => false);
+    }
+
+    /**
+     * Gets prompt error message
+     */
+    async getPromptErrorMessage(): Promise<string> {
+        const errorElement = this.page().locator('.isPromptError');
+        return (await errorElement.textContent().catch(() => null)) ?? '';
+    }
+
+    /**
+     * Checks if level dropdown has validation error
+     */
+    async hasLevelError(): Promise<boolean> {
+        const levelContainer = this.page().locator('#level-dropdown').locator('..').first();
+        return await levelContainer.evaluate(el => el.classList.contains('error')).catch(() => false);
+    }
+
+    /**
+     * Gets level error message
+     */
+    async getLevelErrorMessage(): Promise<string> {
+        const errorMsg = this.page().locator('div.sc-9d92f43a-0.error >> div.sc-9d92f43a-2').first();
+        return (await errorMsg.textContent().catch(() => null)) ?? '';
+    }
+
+    /**
+     * Checks if discipline dropdown has validation error
+     */
+    async hasDisciplineError(): Promise<boolean> {
+        const disciplineContainer = this.page().locator('#disciplines-dropdown').locator('..').first();
+        return await disciplineContainer.evaluate(el => el.classList.contains('error')).catch(() => false);
+    }
+
+    /**
+     * Gets discipline error message
+     */
+    async getDisciplineErrorMessage(): Promise<string> {
+        const errorElements = this.page().locator('div.sc-9d92f43a-0.error >> div.sc-9d92f43a-2');
+        const count = await errorElements.count();
+        if (count >= 2) {
+            return (await errorElements.nth(1).textContent().catch(() => null)) ?? '';
+        }
+        return '';
+    }
+
+    /**
+     * Gets all validation errors on the form
+     */
+    async getAllValidationErrors(): Promise<string[]> {
+        const errors: string[] = [];
+
+        // Check if prompt textarea is actually filled
+        const promptValue = await this.promptTextarea.inputValue().catch(() => '');
+        if (!promptValue || promptValue.trim() === '') {
+            errors.push('Prompt: Question is required');
+        }
+
+        // Check prompt error (after form submission)
+        if (await this.hasPromptError()) {
+            const msg = await this.getPromptErrorMessage();
+            errors.push(`Prompt: ${msg}`);
+        }
+
+        // Check level error
+        if (await this.hasLevelError()) {
+            const msg = await this.getLevelErrorMessage();
+            errors.push(`Level: ${msg}`);
+        }
+
+        // Check discipline error
+        if (await this.hasDisciplineError()) {
+            const msg = await this.getDisciplineErrorMessage();
+            errors.push(`Discipline: ${msg}`);
+        }
+
+        // Additional checks based on question type
+        const isEssay = await this.essayStyleRadio.isChecked().catch(() => false);
+        const isMultipleChoice = await this.multipleChoiceRadio.isChecked().catch(() => false);
+
+        if (isMultipleChoice) {
+            // Check for incorrect answer error
+            const incorrectAnswerError = this.page().locator('.isIncorrectResponsesError');
+            if (await incorrectAnswerError.isVisible().catch(() => false)) {
+                const errorMsg = await incorrectAnswerError.textContent().catch(() => '');
+                errors.push(`Incorrect Responses: ${errorMsg ?? ''}`);
+            }
+        }
+
+        return errors;
+    }
+
 }
+
