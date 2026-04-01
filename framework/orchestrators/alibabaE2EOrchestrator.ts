@@ -90,6 +90,14 @@ export class AlibabaE2EValidation {
             // Mark all base responses
             await ctx.workbenchService.markAllBaseResponses(testData)
 
+            // ── Check for missing base response marking ──
+            // Toast appears if any responses are not marked
+            const missingBaseMarking = await ctx.workbenchService.handleMissingBaseResponseMarking();
+            if (missingBaseMarking.length > 0) {
+                console.log(`  💡 Please mark the missing responses: [${missingBaseMarking.join(', ')}]`)
+                console.log('     Toast has been dismissed. Mark them and click Frontier to continue.')
+            }
+
             // ── handles model error modal automatically ──
             // After marking base responses, check for errors before frontier
             await ctx.workbenchService.verifyNoBaseModelErrors();
@@ -119,6 +127,14 @@ export class AlibabaE2EValidation {
 
                 // Mark all frontier responses
                 await ctx.workbenchService.markAllFrontierResponses(testData);
+
+                // ── Check for missing frontier response marking ──
+                // Modal appears if any responses are not marked, blocking submission
+                const missingFrontierMarking = await ctx.workbenchService.handleMissingFrontierResponseMarking();
+                if (missingFrontierMarking.length > 0) {
+                    console.log(`  💡 Please mark the missing frontier responses: [${missingFrontierMarking.join(', ')}]`)
+                    console.log('     Modal has been dismissed. Mark them and click Submit to continue.')
+                }
 
                 // After marking frontier responses, check for errors before submit
                 await ctx.workbenchService.verifyNoFrontierModelErrors();

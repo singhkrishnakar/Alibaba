@@ -431,6 +431,33 @@ export class WorkbenchPage extends BasePage {
         return this.modelErrorsModal.locator('button.btn-primary');
     }
 
+    // ─────────────────────────────────────────
+    // INCORRECT RESPONSES REQUIRED MODAL
+    // Appears when user tries to submit without marking all frontier responses
+    // ─────────────────────────────────────────
+
+    /**
+     * Incorrect Responses Required modal container.
+     * DevTools: document.querySelector('h5:has-text("Incorrect Responses Required")')
+     *           ?.closest('div.sc-2e6de984-1')
+     */
+    get incorrectResponsesRequiredModal() {
+        return this.page().locator(
+            'div.sc-2e6de984-1:has(h5:has-text("Incorrect Responses Required"))'
+        );
+    }
+
+    get incorrectResponsesModalTitle() {
+        return this.incorrectResponsesRequiredModal.locator('h5');
+    }
+
+    /**
+     * "Got It" button inside the Incorrect Responses Required modal.
+     */
+    get incorrectResponsesGotItButton() {
+        return this.incorrectResponsesRequiredModal.locator('button.btn-primary');
+    }
+
 
     // ─────────────────────────────────────────
     // TOAST / NOTIFICATION LOCATORS
@@ -755,6 +782,32 @@ export class WorkbenchPage extends BasePage {
             },
             { nameIndex, status }
         );
+    }
+
+    /**
+     * Checks if a base response has ANY marking (either Correct or Incorrect).
+     * Returns true if at least one radio is selected.
+     */
+    async isBaseResponseMarked(nameIndex: number): Promise<boolean> {
+        return this.page().evaluate((nameIndex: number) => {
+            const inputs = Array.from(document.querySelectorAll<HTMLInputElement>(
+                `input[name="response-original-${nameIndex}"]`
+            ));
+            return inputs.some(input => input.checked);
+        }, nameIndex);
+    }
+
+    /**
+     * Checks if a frontier response has ANY marking (either Correct or Incorrect).
+     * Returns true if at least one radio is selected.
+     */
+    async isFrontierResponseMarked(nameIndex: number): Promise<boolean> {
+        return this.page().evaluate((nameIndex: number) => {
+            const inputs = Array.from(document.querySelectorAll<HTMLInputElement>(
+                `input[name="response-frontier-${nameIndex}"]`
+            ));
+            return inputs.some(input => input.checked);
+        }, nameIndex);
     }
 
     //ACTION- Shared Actions
@@ -1245,6 +1298,76 @@ export class WorkbenchPage extends BasePage {
         return errorIndexes;
     }
 
+    /**
+     * Finds all base response indexes that have missing marking (neither Correct nor Incorrect selected).
+     * Checks if ANY radio button with the response's name is checked.
+     */
+    async getBaseResponsesWithMissingMarking(): Promise<number[]> {
+        const indexes = await this.getBaseResponseNameIndexes();
+        const missingIndexes: number[] = [];
+
+        for (const index of indexes) {
+            const isMissing = await this.page().evaluate((idx: number) => {
+                // Get all radio inputs for this response
+                const inputs = Array.from(
+                    document.querySelectorAll<HTMLInputElement>(
+                        `input[name="response-original-${idx}"]`
+                    )
+                );
+
+                // If no inputs found, it's missing
+                if (!inputs.length) return true;
+
+                // Check if ANY radio is checked — if at least one is checked, it's marked
+                const anyChecked = inputs.some(input => input.checked);
+
+                // Missing = none are checked
+                return !anyChecked;
+            }, index);
+
+            if (isMissing) {
+                missingIndexes.push(index);
+            }
+        }
+
+        return missingIndexes;
+    }
+
+    /**
+     * Finds all frontier response indexes that have missing marking (neither Correct nor Incorrect selected).
+     * Checks if ANY radio button with the response's name is checked.
+     */
+    async getFrontierResponsesWithMissingMarking(): Promise<number[]> {
+        const indexes = await this.getFrontierResponseNameIndexes();
+        const missingIndexes: number[] = [];
+
+        for (const index of indexes) {
+            const isMissing = await this.page().evaluate((idx: number) => {
+                // Get all radio inputs for this response — frontier uses frontier-* name prefix
+                const inputs = Array.from(
+                    document.querySelectorAll<HTMLInputElement>(
+                        `input[name="response-frontier-${idx}"]`
+                    )
+                );
+
+                // If no inputs found, it's missing
+                if (!inputs.length) return true;
+
+                // Check if ANY radio is checked — if at least one is checked, it's marked
+                const anyChecked = inputs.some(input => input.checked);
+
+                // Missing = none are checked
+                return !anyChecked;
+            }, index);
+
+            if (isMissing) {
+                missingIndexes.push(index);
+            }
+        }
+
+        return missingIndexes;
+    }
+
     // ─────────────────────────────────────────
     // MODEL ERRORS MODAL ACTIONS
     // ─────────────────────────────────────────
@@ -1264,6 +1387,24 @@ export class WorkbenchPage extends BasePage {
         await this.modelErrorsGotItButton.click();
         await this.modelErrorsModal.waitFor({ state: 'hidden', timeout: 5000 });
         console.log('  ✓ Model Errors modal dismissed');
+    }
+
+    /**
+     * Checks if the "Incorrect Responses Required" modal is visible.
+     * This modal appears when user tries to submit without marking all frontier responses.
+     */
+    async isIncorrectResponsesModalVisible(): Promise<boolean> {
+        return this.incorrectResponsesRequiredModal.isVisible().catch(() => false);
+    }
+
+    /**
+     * Clicks "Got it" on the Incorrect Responses Required modal and waits for it to close.
+     */
+    async dismissIncorrectResponsesModal(): Promise<void> {
+        console.log('  → Dismissing Incorrect Responses Required modal...');
+        await this.incorrectResponsesGotItButton.click();
+        await this.incorrectResponsesRequiredModal.waitFor({ state: 'hidden', timeout: 5000 });
+        console.log('  ✓ Incorrect Responses modal dismissed');
     }
 
 
