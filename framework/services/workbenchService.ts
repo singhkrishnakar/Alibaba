@@ -200,12 +200,17 @@ export class WorkbenchService {
             return;
         }
 
+        console.log(`  ℹ️  Base DOM indexes: [${indexes.join(', ')}]`);
+
         const markingMap = testData.workbenchMarking?.baseResponses;
 
-        for (const index of indexes) {
-            // Use marking map if provided, otherwise fall back to defaultStatus
-            const status = markingMap?.[index] ?? defaultStatus;
-            await this.workbenchPage.markBaseResponse(index, status);
+        for (let i = 0; i < indexes.length; i++) {
+            const domIndex = indexes[i];
+            const logicalIndex = i + 1;
+            const status = markingMap?.[logicalIndex] ?? defaultStatus;
+
+            console.log(`  🗂️  Marking: logical[${logicalIndex}] → DOM[response-original-${domIndex}] as ${status}`);
+            await this.workbenchPage.markBaseResponse(domIndex, status);
         }
 
         Logger.info(`✓ All ${indexes.length} base responses marked`);
@@ -227,11 +232,17 @@ export class WorkbenchService {
             return;
         }
 
+        console.log(`  ℹ️  Frontier DOM indexes: [${indexes.join(', ')}]`);
+
         const markingMap = testData.workbenchMarking?.frontierResponses;
 
-        for (const index of indexes) {
-            const status = markingMap?.[index] ?? defaultStatus;
-            await this.workbenchPage.markFrontierResponse(index, status);
+        for (let i = 0; i < indexes.length; i++) {
+            const domIndex = indexes[i];
+            const logicalIndex = i + 1;                           // 1-based key matching config
+            const status = markingMap?.[logicalIndex] ?? defaultStatus;
+
+            console.log(`  🗂️  Marking: logical[${logicalIndex}] → DOM[response-frontier-${domIndex}] as ${status}`);
+            await this.workbenchPage.markFrontierResponse(domIndex, status);
         }
 
         Logger.info(`✓ All ${indexes.length} frontier responses marked`);
@@ -811,6 +822,162 @@ export class WorkbenchService {
         Logger.info('  ✓ All frontier model errors resolved');
     }
 
+    // ─────────────────────────────────────────────────────────────────
+    // PARALLEL/SIMULTANEOUS RETRY HANDLING
+    // For when multiple responses have model errors — retry all at once
+    // ─────────────────────────────────────────────────────────────────
+
+    /**
+     * Resolves multiple base response model errors SIMULTANEOUSLY.
+     * Use this when 2+ base responses have errors — retries all in parallel instead of sequentially.
+     * 
+     * Flow:
+     * 1. Click retry for ALL errored responses (rapid fire)
+     * 2. Verify spinning for all of them
+     * 3. Wait for ALL of them to complete in parallel
+     * 4. Mark all of them
+     */
+    async resolveMultipleBaseModelErrorsSimultaneously(
+        testData: PromptTestData,
+        modelErrorBlockingEnabled: boolean
+    ): Promise<void> {
+        Logger.info('🔍 Checking base responses for model errors (SIMULTANEOUS RETRY MODE)...');
+
+        const errorIndexes = await this.workbenchPage.getBaseResponsesWithModelError();
+
+        if (errorIndexes.length === 0) {
+            Logger.info('  ✓ No model errors in base responses');
+            return;
+        }
+
+        Logger.info(`  ⚠ Model errors found in base responses: [${errorIndexes.join(', ')}]`);
+        Logger.info(`  🔄 Using PARALLEL retry mode for ${errorIndexes.length} errored responses`);
+
+        if (!modelErrorBlockingEnabled) {
+            console.log('  ℹ Model error blocking is DISABLED for this project — skipping retry');
+            return;
+        }
+
+        const retryTimeout = testData.responseTimeouts?.baseResponseTimeout ?? 600000;
+        Logger.info(`  ⏳ Using timeout ${(retryTimeout / 60000).toFixed(0)}min for retried base responses`);
+
+        // Step 1: Click retry for ALL errored responses (no waiting between clicks)
+        Logger.info(`  → Clicking retry for all ${errorIndexes.length} base responses...`);
+        for (const index of errorIndexes) {
+            await this.workbenchPage.clickRetryButton(index, 'base');
+            console.log(`    ✓ Retry clicked for base response ${index}`);
+        }
+
+        // Step 2: Verify spinning started for all
+        Logger.info(`  → Verifying retry spinning for all responses...`);
+        for (const index of errorIndexes) {
+            const spinning = await this.workbenchPage.verifyRetryIsSpinning(index, 'base');
+            if (!spinning) {
+                console.warn(`  ⚠ Retry did not start for base response ${index}`);
+            }
+        }
+
+        // Step 3: Wait for ALL retries to complete IN PARALLEL
+        Logger.info(`  → Waiting for all ${errorIndexes.length} retries to complete simultaneously...`);
+        const retryPromises = errorIndexes.map(index =>
+            this.workbenchPage.waitForRetryToComplete(index, 'base', retryTimeout)
+        );
+        await Promise.all(retryPromises);
+
+        // Step 4: Mark all retried responses
+        Logger.info(`  → Marking all ${errorIndexes.length} retried responses...`);
+        for (const index of errorIndexes) {
+            await this.markSpecificBaseResponse(testData, index);
+        }
+        Logger.info(`  ✓ All ${errorIndexes.length} base responses retried and marked`);
+
+        // Verify no more errors after retrying
+        const remainingErrors = await this.workbenchPage.getBaseResponsesWithModelError();
+        if (remainingErrors.length > 0) {
+            throw new Error(
+                `Model errors still present after retry in base responses: [${remainingErrors.join(', ')}]. ` +
+                `Cannot proceed to frontier.`
+            );
+        }
+
+        Logger.info('  ✓ All base model errors resolved');
+    }
+
+    /**
+     * Resolves multiple frontier response model errors SIMULTANEOUSLY.
+     * Use this when 2+ frontier responses have errors — retries all in parallel instead of sequentially.
+     * 
+     * Flow:
+     * 1. Click retry for ALL errored responses (rapid fire)
+     * 2. Verify spinning for all of them
+     * 3. Wait for ALL of them to complete in parallel
+     * 4. Mark all of them
+     */
+    async resolveMultipleFrontierModelErrorsSimultaneously(
+        testData: PromptTestData,
+        modelErrorBlockingEnabled: boolean
+    ): Promise<void> {
+        Logger.info('🔍 Checking frontier responses for model errors (SIMULTANEOUS RETRY MODE)...');
+
+        const errorIndexes = await this.workbenchPage.getFrontierResponsesWithModelError();
+
+        if (errorIndexes.length === 0) {
+            Logger.info('  ✓ No model errors in frontier responses');
+            return;
+        }
+
+        Logger.info(`  ⚠ Model errors found in frontier responses: [${errorIndexes.join(', ')}]`);
+        Logger.info(`  🔄 Using PARALLEL retry mode for ${errorIndexes.length} errored responses`);
+
+        if (!modelErrorBlockingEnabled) {
+            console.log('  ℹ Model error blocking is DISABLED for this project — skipping retry');
+            return;
+        }
+
+        const retryTimeout = testData.responseTimeouts?.frontierResponseTimeout ?? 600000;
+        Logger.info(`  ⏳ Using timeout ${(retryTimeout / 60000).toFixed(0)}min for retried frontier responses`);
+
+        // Step 1: Click retry for ALL errored responses (no waiting between clicks)
+        Logger.info(`  → Clicking retry for all ${errorIndexes.length} frontier responses...`);
+        for (const index of errorIndexes) {
+            await this.workbenchPage.clickRetryButton(index, 'frontier');
+            console.log(`    ✓ Retry clicked for frontier response ${index}`);
+        }
+
+        // Step 2: Verify spinning started for all
+        Logger.info(`  → Verifying retry spinning for all responses...`);
+        for (const index of errorIndexes) {
+            const spinning = await this.workbenchPage.verifyRetryIsSpinning(index, 'frontier');
+            if (!spinning) {
+                console.warn(`  ⚠ Retry did not start for frontier response ${index}`);
+            }
+        }
+
+        // Step 3: Wait for ALL retries to complete IN PARALLEL
+        Logger.info(`  → Waiting for all ${errorIndexes.length} retries to complete simultaneously...`);
+        const retryPromises = errorIndexes.map(index =>
+            this.workbenchPage.waitForRetryToComplete(index, 'frontier', retryTimeout)
+        );
+        await Promise.all(retryPromises);
+
+        // Step 4: Mark all retried responses
+        Logger.info(`  → Marking all ${errorIndexes.length} retried responses...`);
+        for (const index of errorIndexes) {
+            await this.markSpecificFrontierResponse(testData, index);
+        }
+        Logger.info(`  ✓ All ${errorIndexes.length} frontier responses retried and marked`);
+
+        const remainingErrors = await this.workbenchPage.getFrontierResponsesWithModelError();
+        if (remainingErrors.length > 0) {
+            throw new Error(
+                `Model errors still present after retry in frontier responses: [${remainingErrors.join(', ')}]. ` +
+                `Cannot proceed to submit.`
+            );
+        }
+
+        Logger.info('  ✓ All frontier model errors resolved');
+    }
+
     /**
      * Handles the Model Errors Detected modal if it appears after clicking frontier/submit.
      * If modal appears:
@@ -849,10 +1016,25 @@ export class WorkbenchService {
         await this.workbenchPage.dismissModelErrorsModal();
 
         // Resolve errors based on which button was clicked
+        // Intelligently choose SEQUENTIAL or SIMULTANEOUS retry based on error count
         if (type === 'frontier') {
-            await this.resolveBaseModelErrors(testData, modelErrorBlockingEnabled);
+            // Check base response error count to decide strategy
+            const baseErrors = await this.workbenchPage.getBaseResponsesWithModelError();
+            if (baseErrors.length > 1) {
+                Logger.info(`  ℹ ${baseErrors.length} base responses have errors → using SIMULTANEOUS retry`);
+                await this.resolveMultipleBaseModelErrorsSimultaneously(testData, modelErrorBlockingEnabled);
+            } else {
+                await this.resolveBaseModelErrors(testData, modelErrorBlockingEnabled);
+            }
         } else {
-            await this.resolveFrontierModelErrors(testData, modelErrorBlockingEnabled);
+            // Check frontier response error count to decide strategy
+            const frontierErrors = await this.workbenchPage.getFrontierResponsesWithModelError();
+            if (frontierErrors.length > 1) {
+                Logger.info(`  ℹ ${frontierErrors.length} frontier responses have errors → using SIMULTANEOUS retry`);
+                await this.resolveMultipleFrontierModelErrorsSimultaneously(testData, modelErrorBlockingEnabled);
+            } else {
+                await this.resolveFrontierModelErrors(testData, modelErrorBlockingEnabled);
+            }
         }
     }
 
@@ -892,11 +1074,11 @@ export class WorkbenchService {
         try {
             const errors = await Promise.race([
                 this.workbenchPage.getBaseResponsesWithModelError(),
-                new Promise((_, reject) => 
+                new Promise((_, reject) =>
                     setTimeout(() => reject(new Error('verifyNoBaseModelErrors timeout')), timeout)
                 )
             ]) as number[];
-            
+
             if (errors.length > 0) {
                 console.warn(`  ⚠ Model errors found in base responses: [${errors.join(', ')}]`);
                 return false;
@@ -918,11 +1100,11 @@ export class WorkbenchService {
         try {
             const errors = await Promise.race([
                 this.workbenchPage.getFrontierResponsesWithModelError(),
-                new Promise((_, reject) => 
+                new Promise((_, reject) =>
                     setTimeout(() => reject(new Error('verifyNoFrontierModelErrors timeout')), timeout)
                 )
             ]) as number[];
-            
+
             if (errors.length > 0) {
                 console.warn(`  ⚠ Model errors found in frontier responses: [${errors.join(', ')}]`);
                 return false;
@@ -935,6 +1117,151 @@ export class WorkbenchService {
         }
     }
 
+    // ─────────────────────────────────────────
+    // MISSING MARKING HANDLING
+    // ─────────────────────────────────────────
+
+    /**
+     * Handles missing base response marking scenario.
+     * A toast appears and auto-dismisses after 5 seconds.
+     * Logs which responses are missing marking.
+     */
+    async handleMissingBaseResponseMarking(): Promise<number[]> {
+        Logger.info('⚠️  Checking for missing base response marking...');
+
+        const missingIndexes = await this.workbenchPage.getBaseResponsesWithMissingMarking();
+
+        if (missingIndexes.length === 0) {
+            Logger.info('  ✓ All base responses have marking');
+            return [];
+        }
+
+        console.warn(`  ⚠️  Missing marking on base responses: [${missingIndexes.join(', ')}]`);
+
+        // Wait for and dismiss the missing marking toast
+        try {
+            const isVisible = await this.workbenchPage.errorToast.isVisible({ timeout: 3000 }).catch(() => false);
+            if (isVisible) {
+                const message = await this.workbenchPage.errorToastMessage.textContent();
+                Logger.info(`  📢 Toast message: "${message?.trim()}"`);
+
+                // Toast auto-dismisses after ~5 seconds, but we can close it manually
+                await this.workbenchPage.closeErrorToast();
+            }
+        } catch {
+            console.warn('  ⚠️  Toast did not appear (may have auto-dismissed)');
+        }
+
+        Logger.info(`  → User needs to mark: [${missingIndexes.join(', ')}]`);
+        return missingIndexes;
+    }
+
+    /**
+     * Handles missing frontier response marking scenario.
+     * Modal appears and blocks submission.
+     * User must mark missing responses then click submit again.
+     */
+    async handleMissingFrontierResponseMarking(): Promise<number[]> {
+        Logger.info('⚠️  Checking for missing frontier response marking...');
+
+        const missingIndexes = await this.workbenchPage.getFrontierResponsesWithMissingMarking();
+
+        if (missingIndexes.length === 0) {
+            Logger.info('  ✓ All frontier responses have marking');
+            return [];
+        }
+
+        console.warn(`  ⚠️  Missing marking on frontier responses: [${missingIndexes.join(', ')}]`);
+
+        // Wait for and dismiss the modal
+        const isModalVisible = await this.workbenchPage.isIncorrectResponsesModalVisible();
+        if (isModalVisible) {
+            const title = await this.workbenchPage.incorrectResponsesModalTitle.textContent();
+            Logger.info(`  📋 Modal title: "${title?.trim()}"`);
+
+            // Dismiss the modal
+            await this.workbenchPage.dismissIncorrectResponsesModal();
+        }
+
+        Logger.info(`  → User needs to mark: [${missingIndexes.join(', ')}]`);
+        return missingIndexes;
+    }
+
+    /**
+ * Clicks Frontier button with incomplete base markings to trigger the missing marking toast.
+ * This is the correct way to test Scenario 1 — the toast only appears on button click.
+ *
+ * Flow: Click Frontier → toast appears → verify → dismiss → return missing indexes
+ */
+    async clickFrontierAndVerifyMissingMarkingToast(): Promise<number[]> {
+        Logger.info('🧪 Clicking Frontier button to trigger missing marking toast...');
+
+        // Capture missing indexes BEFORE clicking (DOM state)
+        const missingIndexes = await this.workbenchPage.getBaseResponsesWithMissingMarking();
+
+        if (missingIndexes.length === 0) {
+            Logger.info('  ✓ All base responses are marked — no toast expected');
+            return [];
+        }
+
+        // Click Frontier — this is what triggers the toast
+        await this.workbenchPage.clickFrontierButton();
+
+        // Wait for and verify the error toast
+        try {
+            const isVisible = await this.workbenchPage.errorToast
+                .isVisible({ timeout: 5000 })
+                .catch(() => false);
+
+            if (isVisible) {
+                const message = await this.workbenchPage.errorToastMessage.textContent();
+                Logger.info(`  📢 Toast appeared: "${message?.trim()}"`);
+                await this.workbenchPage.closeErrorToast();
+                Logger.info('  ✓ Toast dismissed');
+            } else {
+                console.warn('  ⚠️ Frontier clicked but missing marking toast did not appear');
+            }
+        } catch {
+            console.warn('  ⚠️ Toast may have auto-dismissed');
+        }
+
+        return missingIndexes;
+    }
+
+    /**
+     * Clicks Submit button with incomplete frontier markings to trigger the missing marking modal.
+     * This is the correct way to test Scenario 2 — the modal only appears on Submit click.
+     *
+     * Flow: Wait for Submit enabled → Click Submit → modal appears → verify → dismiss → return missing indexes
+     */
+    async clickSubmitAndVerifyMissingMarkingModal(): Promise<number[]> {
+        Logger.info('🧪 Clicking Submit button to trigger missing frontier marking modal...');
+
+        // Capture missing indexes BEFORE clicking (DOM state)
+        const missingIndexes = await this.workbenchPage.getFrontierResponsesWithMissingMarking();
+
+        if (missingIndexes.length === 0) {
+            Logger.info('  ✓ All frontier responses are marked — no modal expected');
+            return [];
+        }
+
+        // Wait for Submit to be enabled, then click — this triggers the modal
+        await this.waitForSubmitButtonEnabled();
+        await this.workbenchPage.clickSubmit();
+
+        // Wait for and verify the modal
+        const isModalVisible = await this.workbenchPage.isIncorrectResponsesModalVisible();
+        if (isModalVisible) {
+            const title = await this.workbenchPage.incorrectResponsesModalTitle.textContent();
+            Logger.info(`  📋 Modal appeared: "${title?.trim()}"`);
+            await this.workbenchPage.dismissIncorrectResponsesModal();
+            Logger.info('  ✓ Modal dismissed');
+        } else {
+            console.warn('  ⚠️ Submit clicked but "Incorrect Responses Required" modal did not appear');
+        }
+
+        return missingIndexes;
+    }
 
     // ─────────────────────────────────────────
     // DEBUG

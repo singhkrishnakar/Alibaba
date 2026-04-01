@@ -30,7 +30,7 @@ if (RUN_ONLY_PROMPT_ID && selectedPrompts.length === 0) {
 // TESTS — one test per selected prompt
 // ─────────────────────────────────────────
 for (const data of selectedPrompts) {
-    test.only(`LLM Prompt: ${data.id}`, async ({ testContext }) => {
+    test(`LLM Prompt: ${data.id}`, async ({ testContext }) => {
         const orchestrator = new AlibabaE2EValidation(testContext);
         await orchestrator.run(data);
     });

@@ -141,4 +141,41 @@ export const promptData: PromptTestData[] = [
             frontierResponseTimeout: 2400000   // 40 min — very complex prompt
         }
     },
+    {
+        id: 'missingMarkingValidation',
+        configModelResponsesCount: modelResponsesCount.reduced,
+        expectedResponse: expectedResponse.simpleGreeting,
+        expectedBaseResponsesCount: modelResponsesCount.reduced.baseModelResponsesCount,
+        expectedFrontierResponsesCount: modelResponsesCount.reduced.frontierModelResponsesCount,
+        metadata: metadata.chemistryUndergrad,
+
+        // ─────────────────────────────────────────
+        // INTENTIONALLY INCOMPLETE MARKING:
+        // Only mark SOME base and frontier responses
+        // This triggers the missing marking validation flows
+        // ─────────────────────────────────────────
+        workbenchMarking: {
+            // Mark only 1st base response - leave others unmarked
+            // This will trigger the Toast: "Please mark all responses..."
+            baseResponses: {
+                1: 'Incorrect'
+                // Intentionally omit 2, 3, 4, 5 to trigger missing marking
+            },
+            // Mark only 1st frontier response - leave others unmarked
+            // This will trigger the Modal: "Incorrect Responses Required"
+            frontierResponses: {
+                1: 'Correct'
+                // Intentionally omit 2, 3, 4, 5, 6 to trigger missing marking
+            }
+        },
+        // Model error blocking enabled to test full error flow
+        featureFlags: {
+            modelErrorBlockingEnabled: true
+        },
+        // Simple prompt - quick response times
+        responseTimeouts: {
+            baseResponseTimeout: 600000,   // 10 min
+            frontierResponseTimeout: 600000    // 10 min
+        }
+    },
 ];
